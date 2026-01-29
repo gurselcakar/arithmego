@@ -10,7 +10,7 @@ Development phases for ArithmeGo.
 |-------|-------|--------|
 | 0 | Foundation | Complete |
 | 1 | Core Game Loop | Complete |
-| 2 | Basic TUI | Planned |
+| 2 | Basic TUI | Complete |
 | 3 | Modes System | Planned |
 | 4 | Scoring | Planned |
 | 5 | Statistics | Planned |
@@ -45,6 +45,15 @@ Includes:
 ### Phase 2: Basic TUI
 
 Playable game in terminal. Menu, game screen, results screen.
+
+Includes:
+- Bubble Tea TUI with alt-screen mode
+- Menu screen with logo and navigation
+- Game screen with timer, question display, numeric input
+- Pause screen (hides question, freezes timer)
+- Results screen (correct count, accuracy)
+- Session management (start, tick, pause/resume, submit, skip)
+- Stubs for all future screens
 
 ### Phase 3: Modes System
 

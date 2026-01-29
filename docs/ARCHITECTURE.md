@@ -217,6 +217,57 @@ See `.local/specs/difficulty-design.md` for full specification including scoring
 
 ---
 
+## UI Architecture
+
+The TUI uses Bubble Tea's Model-View-Update pattern with a central App orchestrator.
+
+### Screen Flow
+
+```
+Menu
+ ├─ Quick Play* ───────→ Game ←→ Pause
+ │                         ↓
+ ├─ Modes → Launch ──────→ Game ←→ Pause
+ │                           ↓
+ │                        Results → Menu / Play Again
+ ├─ Practice
+ ├─ Statistics
+ └─ Settings
+
+* Quick Play appears only for returning users (Phase 6)
+  Uses last played mode, bypasses Modes/Launch screens
+```
+
+### Message Types
+
+Screen transitions are handled via typed messages:
+
+| Message | Trigger |
+|---------|---------|
+| `MenuSelectMsg` | Menu item selected |
+| `GameOverMsg` | Timer expired |
+| `PauseMsg` | User pressed P/Esc |
+| `ResumeMsg` | User pressed Enter on pause |
+| `QuitToMenuMsg` | User quit from pause |
+| `PlayAgainMsg` | User pressed Enter on results |
+| `ReturnToMenuMsg` | User pressed M/Esc on results |
+
+### Components
+
+Reusable UI elements in `internal/ui/components/`:
+
+| Component | Purpose |
+|-----------|---------|
+| `logo.go` | ASCII art logo and tagline |
+| `timer.go` | MM:SS countdown format |
+| `question.go` | Question display |
+| `input.go` | Numeric text input |
+| `keyhints.go` | Navigation hints |
+| `scoreboard.go` | Points/streak display (Phase 4) |
+| `choices.go` | Multiple choice input (Phase 10) |
+
+---
+
 ## Distribution
 
 Primary method: curl install script
