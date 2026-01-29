@@ -26,10 +26,11 @@ func (m *mockOperation) Generate(diff Difficulty) Question {
 
 func TestNewSession(t *testing.T) {
 	op := &mockOperation{}
-	s := NewSession(op, Medium, 60*time.Second)
+	ops := []Operation{op}
+	s := NewSession(ops, Medium, 60*time.Second)
 
-	if s.Operation != op {
-		t.Error("session operation not set correctly")
+	if len(s.Operations) != 1 || s.Operations[0] != op {
+		t.Error("session operations not set correctly")
 	}
 	if s.Difficulty != Medium {
 		t.Error("session difficulty not set correctly")
@@ -44,7 +45,7 @@ func TestNewSession(t *testing.T) {
 
 func TestSessionStart(t *testing.T) {
 	op := &mockOperation{}
-	s := NewSession(op, Medium, 60*time.Second)
+	s := NewSession([]Operation{op}, Medium, 60*time.Second)
 	s.Start()
 
 	if s.StartTime.IsZero() {
@@ -60,7 +61,7 @@ func TestSessionStart(t *testing.T) {
 
 func TestSessionSubmitAnswer(t *testing.T) {
 	op := &mockOperation{}
-	s := NewSession(op, Medium, 60*time.Second)
+	s := NewSession([]Operation{op}, Medium, 60*time.Second)
 	s.Start()
 
 	// Correct answer
@@ -84,7 +85,7 @@ func TestSessionSubmitAnswer(t *testing.T) {
 
 func TestSessionSkip(t *testing.T) {
 	op := &mockOperation{}
-	s := NewSession(op, Medium, 60*time.Second)
+	s := NewSession([]Operation{op}, Medium, 60*time.Second)
 	s.Start()
 
 	s.Skip()
@@ -95,7 +96,7 @@ func TestSessionSkip(t *testing.T) {
 
 func TestSessionAccuracy(t *testing.T) {
 	op := &mockOperation{}
-	s := NewSession(op, Medium, 60*time.Second)
+	s := NewSession([]Operation{op}, Medium, 60*time.Second)
 	s.Start()
 
 	// No answers yet - should be 0
@@ -115,7 +116,7 @@ func TestSessionAccuracy(t *testing.T) {
 
 func TestSessionIsFinished(t *testing.T) {
 	op := &mockOperation{}
-	s := NewSession(op, Medium, 1*time.Millisecond)
+	s := NewSession([]Operation{op}, Medium, 1*time.Millisecond)
 	s.Start()
 
 	if s.IsFinished() {

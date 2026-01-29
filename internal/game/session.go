@@ -6,7 +6,7 @@ import "time"
 // Phase 5: Extend with per-question history (response times, answers given)
 type Session struct {
 	// Configuration (immutable after creation)
-	Operation  Operation
+	Operations []Operation
 	Difficulty Difficulty
 	Duration   time.Duration
 
@@ -24,9 +24,10 @@ type Session struct {
 }
 
 // NewSession creates a new game session with the given configuration.
-func NewSession(op Operation, diff Difficulty, duration time.Duration) *Session {
+// Accepts one or more operations; questions will randomly use any of them.
+func NewSession(ops []Operation, diff Difficulty, duration time.Duration) *Session {
 	return &Session{
-		Operation:  op,
+		Operations: ops,
 		Difficulty: diff,
 		Duration:   duration,
 		TimeLeft:   duration,
@@ -56,7 +57,7 @@ func (s *Session) IsFinished() bool {
 
 // NextQuestion generates and sets a new question.
 func (s *Session) NextQuestion() {
-	q := GenerateQuestionForOperation(s.Operation, s.Difficulty)
+	q := GenerateQuestion(s.Operations, s.Difficulty)
 	s.Current = &q
 }
 

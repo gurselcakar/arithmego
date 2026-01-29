@@ -6,19 +6,9 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/gurselcakar/arithmego/internal/game"
-	"github.com/gurselcakar/arithmego/internal/game/operations"
+	"github.com/gurselcakar/arithmego/internal/modes"
 	"github.com/gurselcakar/arithmego/internal/ui/screens"
 )
-
-// Phase 2 hardcoded configuration
-var phase2Config = struct {
-	Operation  game.Operation
-	Difficulty game.Difficulty
-	Duration   time.Duration
-}{
-	Difficulty: game.Medium,
-	Duration:   60 * time.Second,
-}
 
 // App is the main Bubble Tea model that orchestrates all screens.
 type App struct {
@@ -38,8 +28,11 @@ type App struct {
 	settingsModel   screens.SettingsModel
 	onboardingModel screens.OnboardingModel
 
-	// Current session
-	session *game.Session
+	// Current session state
+	session        *game.Session
+	currentMode    *modes.Mode
+	lastDifficulty game.Difficulty
+	lastDuration   time.Duration
 }
 
 // New creates a new App instance.
@@ -48,7 +41,6 @@ func New() *App {
 		screen:          ScreenMenu,
 		menuModel:       screens.NewMenu(),
 		modesModel:      screens.NewModes(),
-		launchModel:     screens.NewLaunch(),
 		practiceModel:   screens.NewPractice(),
 		statisticsModel: screens.NewStatistics(),
 		settingsModel:   screens.NewSettings(),
@@ -105,8 +97,10 @@ func (a *App) updateMenu(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if selectMsg, ok := msg.(screens.MenuSelectMsg); ok {
 		switch selectMsg.Action {
 		case screens.ActionModes:
-			// For Phase 2, start game directly with hardcoded config
-			return a.startGame()
+			a.modesModel = screens.NewModes()
+			a.modesModel.SetSize(a.width, a.height)
+			a.screen = ScreenModes
+			return a, a.modesModel.Init()
 		case screens.ActionPractice:
 			a.screen = ScreenPractice
 			return a, a.practiceModel.Init()
@@ -204,6 +198,15 @@ func (a *App) updateModes(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	a.modesModel, cmd = a.modesModel.Update(msg)
 
+	// Check for mode selection
+	if selectMsg, ok := msg.(screens.ModeSelectMsg); ok {
+		a.currentMode = selectMsg.Mode
+		a.launchModel = screens.NewLaunch(a.currentMode)
+		a.launchModel.SetSize(a.width, a.height)
+		a.screen = ScreenLaunch
+		return a, a.launchModel.Init()
+	}
+
 	if _, ok := msg.(screens.ReturnToMenuMsg); ok {
 		a.screen = ScreenMenu
 		return a, nil
@@ -217,9 +220,20 @@ func (a *App) updateLaunch(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	a.launchModel, cmd = a.launchModel.Update(msg)
 
-	if _, ok := msg.(screens.ReturnToMenuMsg); ok {
-		a.screen = ScreenMenu
-		return a, nil
+	// Check for start game
+	if startMsg, ok := msg.(screens.StartGameMsg); ok {
+		a.currentMode = startMsg.Mode
+		a.lastDifficulty = startMsg.Difficulty
+		a.lastDuration = startMsg.Duration
+		return a.startGame()
+	}
+
+	// Check for return to modes
+	if _, ok := msg.(screens.ReturnToModesMsg); ok {
+		a.modesModel = screens.NewModes()
+		a.modesModel.SetSize(a.width, a.height)
+		a.screen = ScreenModes
+		return a, a.modesModel.Init()
 	}
 
 	return a, cmd
@@ -279,14 +293,11 @@ func (a *App) updateOnboarding(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // startGame creates a new session and starts the game.
 func (a *App) startGame() (tea.Model, tea.Cmd) {
-	// Get the Addition operation for Phase 2
-	op, ok := operations.Get("Addition")
-	if !ok {
-		// Fallback: this shouldn't happen if operations are registered
-		return a, nil
+	if a.currentMode == nil || len(a.currentMode.Operations) == 0 {
+		panic("startGame: invalid mode state")
 	}
 
-	a.session = game.NewSession(op, phase2Config.Difficulty, phase2Config.Duration)
+	a.session = game.NewSession(a.currentMode.Operations, a.lastDifficulty, a.lastDuration)
 	a.gameModel = screens.NewGame(a.session)
 	a.gameModel.SetSize(a.width, a.height)
 	a.screen = ScreenGame

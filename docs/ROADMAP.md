@@ -11,7 +11,7 @@ Development phases for ArithmeGo.
 | 0 | Foundation | Complete |
 | 1 | Core Game Loop | Complete |
 | 2 | Basic TUI | Complete |
-| 3 | Modes System | Planned |
+| 3 | Modes System | Complete |
 | 4 | Scoring | Planned |
 | 5 | Statistics | Planned |
 | 6 | Quick Play | Planned |
@@ -58,6 +58,14 @@ Includes:
 ### Phase 3: Modes System
 
 Multiple modes available. Mode selection screen, mode launch with settings.
+
+Includes:
+- Mode struct with operations, difficulty, duration
+- 7 preset modes: 4 sprints + Mixed Operations + Speed Round + Endurance
+- Modes screen with category grouping (Sprint/Challenge)
+- Launch screen with difficulty and duration selectors
+- Session support for multiple operations (random selection per question)
+- Full Menu → Modes → Launch → Game flow
 
 ### Phase 4: Scoring
 
