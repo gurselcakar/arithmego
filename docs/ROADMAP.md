@@ -36,9 +36,9 @@ Project setup. Go module, directory structure, dependencies, Makefile.
 Question generation and answer validation. No UI—pure logic with unit tests.
 
 Includes:
-- Interface-based Operation system (see `.local/operations-design.md`)
+- Interface-based Operation system (see `.local/specs/operations-design.md`)
 - All 12 operations: basic (4), power (4), advanced (4)
-- Intelligent difficulty scoring (see `.local/difficulty-design.md`)
+- Intelligent difficulty scoring (see `.local/specs/difficulty-design.md`)
 - Question struct with answer validation
 - Comprehensive test coverage
 

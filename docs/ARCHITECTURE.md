@@ -189,7 +189,7 @@ type Operation interface {
 3. Register via `init()` function
 4. Add tests
 
-No existing code needs modification. See `.local/operations-design.md` for full specification.
+No existing code needs modification. See `.local/specs/operations-design.md` for full specification.
 
 ---
 
@@ -213,7 +213,7 @@ Each operation considers operation-specific factors:
 - **Multiplication**: Digit combinations, easy multipliers
 - **Division**: Times table inverse, quotient size
 
-See `.local/difficulty-design.md` for full specification including scoring weights.
+See `.local/specs/difficulty-design.md` for full specification including scoring weights.
 
 ---
 

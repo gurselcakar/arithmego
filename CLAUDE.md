@@ -4,26 +4,15 @@ Command-line arithmetic game for developers. Built with Go, Bubble Tea, and Cobr
 
 **Status:** Phase 0 complete, ready to start Phase 1
 
-## Project Context
+## Docs
 
-- Read @docs/DESIGN.md for vision, mechanics, and game modes
-- Read @docs/ARCHITECTURE.md for tech stack and project structure
-- Read @docs/ROADMAP.md for development phases
+- `docs/DESIGN.md` — Vision, mechanics, game modes
+- `docs/ARCHITECTURE.md` — Tech stack, project structure
+- `docs/ROADMAP.md` — Development phases
 
-## Detailed Planning (Private)
-
-For deeper context, check `.local/`:
-
-- `.local/operations-design.md` — **Phase 1 spec:** Interface-based operations architecture
-- `.local/difficulty-design.md` — **Phase 1 spec:** Intelligent difficulty scoring system
-- `.local/mechanics.md` — Detailed game rules, scoring formulas, statistics schema
-- `.local/ui-design.md` — All screen mockups and UI specifications
-- `.local/conversation.md` — First planning session decisions
-- `.local/conversation-N.md` — Subsequent session logs
+For detailed specs and session logs, see `.local/` (gitignored).
 
 ## Commands
-
-No code yet. When development begins:
 
 ```bash
 make build    # Build for current platform
@@ -38,10 +27,3 @@ make lint     # Run linter
 - Use `internal/` for all packages (no public API)
 - Game logic in `internal/game/` must have no UI imports
 - UI code in `internal/ui/` must have no storage imports
-
-## Conventions
-
-- Document each coding session in `.local/conversation-N.md`
-- Follow phases in @docs/ROADMAP.md sequentially
-- Write tests alongside implementation
-- Commit frequently with clear messages
