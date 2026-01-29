@@ -9,7 +9,7 @@ Development phases for ArithmeGo.
 | Phase | Focus | Status |
 |-------|-------|--------|
 | 0 | Foundation | Complete |
-| 1 | Core Game Loop | Planned |
+| 1 | Core Game Loop | Complete |
 | 2 | Basic TUI | Planned |
 | 3 | Modes System | Planned |
 | 4 | Scoring | Planned |
