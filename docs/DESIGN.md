@@ -48,19 +48,25 @@ ArithmeGo meets them there:
 
 ### Operations
 
-Four arithmetic operations: Addition, Subtraction, Multiplication, Division.
+12 operations across three categories:
+
+| Category | Operations |
+|----------|------------|
+| **Basic** | Addition, Subtraction, Multiplication, Division |
+| **Power** | Square, Cube, Square Root, Cube Root |
+| **Advanced** | Modulo, Power, Percentage, Factorial |
 
 ### Difficulty Tiers
 
-Difficulty controls number size:
+Difficulty is based on cognitive complexity, not just number size:
 
-| Tier | Number Range | Terms |
-|------|--------------|-------|
-| Beginner | 1-9 | 2 |
-| Intermediate | 1-50 | 2 |
-| Skilled | 10-99 | 2 |
-| Advanced | 10-250 | 2-3 |
-| Master | 100-999 | 2-3 |
+| Tier | Description |
+|------|-------------|
+| Beginner | Trivial, instant recall |
+| Easy | Simple computation |
+| Medium | Requires focus |
+| Hard | Challenging |
+| Expert | Demanding |
 
 ### Session Lengths
 
@@ -135,7 +141,8 @@ All data stays local. User owns their data.
 ## Future Possibilities
 
 Documented for later, not current scope:
+- Adaptive difficulty (adjusts based on performance)
 - Leaderboards
 - PvP mode
 - Custom level builder
-- Additional operations (squares, roots, percentages)
+- Compound operations (PEMDAS, fractions)

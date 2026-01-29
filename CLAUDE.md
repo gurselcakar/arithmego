@@ -2,7 +2,7 @@
 
 Command-line arithmetic game for developers. Built with Go, Bubble Tea, and Cobra.
 
-**Status:** Pre-development (planning complete, ready to start Phase 0)
+**Status:** Phase 0 complete, ready to start Phase 1
 
 ## Project Context
 
@@ -14,6 +14,8 @@ Command-line arithmetic game for developers. Built with Go, Bubble Tea, and Cobr
 
 For deeper context, check `.local/`:
 
+- `.local/operations-design.md` — **Phase 1 spec:** Interface-based operations architecture
+- `.local/difficulty-design.md` — **Phase 1 spec:** Intelligent difficulty scoring system
 - `.local/mechanics.md` — Detailed game rules, scoring formulas, statistics schema
 - `.local/ui-design.md` — All screen mockups and UI specifications
 - `.local/conversation.md` — First planning session decisions

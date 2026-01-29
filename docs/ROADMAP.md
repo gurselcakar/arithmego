@@ -8,7 +8,7 @@ Development phases for ArithmeGo.
 
 | Phase | Focus | Status |
 |-------|-------|--------|
-| 0 | Foundation | Planned |
+| 0 | Foundation | Complete |
 | 1 | Core Game Loop | Planned |
 | 2 | Basic TUI | Planned |
 | 3 | Modes System | Planned |
@@ -34,6 +34,13 @@ Project setup. Go module, directory structure, dependencies, Makefile.
 ### Phase 1: Core Game Loop
 
 Question generation and answer validation. No UI—pure logic with unit tests.
+
+Includes:
+- Interface-based Operation system (see `.local/operations-design.md`)
+- All 12 operations: basic (4), power (4), advanced (4)
+- Intelligent difficulty scoring (see `.local/difficulty-design.md`)
+- Question struct with answer validation
+- Comprehensive test coverage
 
 ### Phase 2: Basic TUI
 
@@ -81,13 +88,14 @@ Install script, GoReleaser config, GitHub Actions, README, LICENSE.
 
 Ideas documented for future consideration:
 
+- Adaptive difficulty (adjusts based on user performance)
 - Adaptive placement test
 - Custom user-created modes
 - Post-game analysis
 - Trend graphs
 - Leaderboards (requires backend)
 - PvP mode (requires backend)
-- New operations (squares, roots, percentages)
+- Compound operations (PEMDAS, fractions)
 - Data export
 
 ---

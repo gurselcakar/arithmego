@@ -60,12 +60,27 @@ arithmego/
 │   │   └── version.go
 │   │
 │   ├── game/                       # Core game logic
-│   │   ├── engine.go
-│   │   ├── question.go
-│   │   ├── operations.go
-│   │   ├── difficulty.go
+│   │   ├── operation.go            # Operation interface
+│   │   ├── question.go             # Question struct
+│   │   ├── difficulty.go           # Difficulty tiers
+│   │   ├── engine.go               # Generation helpers
 │   │   ├── scoring.go
-│   │   └── session.go
+│   │   ├── session.go
+│   │   └── operations/             # Operation implementations
+│   │       ├── registry.go         # Registration system
+│   │       ├── helpers.go          # Shared utilities
+│   │       ├── addition.go         # Basic binary
+│   │       ├── subtraction.go
+│   │       ├── multiplication.go
+│   │       ├── division.go
+│   │       ├── modulo.go           # Additional binary
+│   │       ├── power.go
+│   │       ├── percentage.go
+│   │       ├── square.go           # Unary
+│   │       ├── cube.go
+│   │       ├── square_root.go
+│   │       ├── cube_root.go
+│   │       └── factorial.go
 │   │
 │   ├── modes/                      # Game modes
 │   │   ├── mode.go
@@ -136,8 +151,69 @@ arithmego/
 | Principle | Implementation |
 |-----------|----------------|
 | **Separation of concerns** | Game logic has no UI imports. UI has no storage imports. |
-| **Extensibility** | Mode interface allows easy addition of new modes. |
+| **Extensibility** | Operation interface allows easy addition of new operations. |
 | **Testability** | Core logic is pure Go, unit testable without TUI. |
+| **Open/Closed** | Add operations without modifying existing code. |
+
+---
+
+## Operations Architecture
+
+Operations use an interface-based design for maximum extensibility. Each operation is self-contained and encapsulates its own logic.
+
+```go
+type Operation interface {
+    Name() string           // "Square Root"
+    Symbol() string         // "√"
+    Arity() Arity           // Unary (1) or Binary (2)
+    Category() Category     // basic, power, advanced
+    Apply(operands []int) int
+    ScoreDifficulty(operands []int, answer int) float64
+    Generate(diff Difficulty) Question
+    Format(operands []int) string
+}
+```
+
+### Supported Operations
+
+| Category | Operations |
+|----------|------------|
+| **Basic** | Addition, Subtraction, Multiplication, Division |
+| **Power** | Square, Cube, Square Root, Cube Root |
+| **Advanced** | Modulo, Power, Percentage, Factorial |
+
+### Adding New Operations
+
+1. Create a new file in `internal/game/operations/`
+2. Implement the `Operation` interface
+3. Register via `init()` function
+4. Add tests
+
+No existing code needs modification. See `.local/operations-design.md` for full specification.
+
+---
+
+## Difficulty Scoring
+
+Difficulty uses intelligent scoring based on cognitive factors, not just number size. Each operation implements `ScoreDifficulty()` to compute problem difficulty.
+
+| Tier | Score Range | Description |
+|------|-------------|-------------|
+| **Beginner** | 1.0 - 2.0 | Trivial, instant recall |
+| **Easy** | 2.0 - 4.0 | Simple computation |
+| **Medium** | 4.0 - 6.0 | Requires focus |
+| **Hard** | 6.0 - 8.0 | Challenging |
+| **Expert** | 8.0 - 10.0 | Demanding |
+
+### Scoring Factors
+
+Each operation considers operation-specific factors:
+- **Addition**: Carries, digit count, nice numbers
+- **Subtraction**: Borrows, digit count, zeros
+- **Multiplication**: Digit combinations, easy multipliers
+- **Division**: Times table inverse, quotient size
+
+See `.local/difficulty-design.md` for full specification including scoring weights.
 
 ---
 
