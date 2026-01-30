@@ -10,18 +10,31 @@ A command-line arithmetic game designed for developers using agentic coding tool
 
 ArithmeGo fills the small gaps while your AI agent works. Short sessions. Minimal friction. Never leave the terminal.
 
-**Status:** In development
+**Status:** In development (Phase 5 complete)
 
 ---
 
-## Features (Planned)
+## Features
 
-- Four operations: addition, subtraction, multiplication, division
-- Multiple difficulty tiers
-- Timed sessions (30s to 2 minutes)
-- Practice mode (no timer, no pressure)
-- Local statistics tracking
+### Implemented
+
+- 12 operations across three categories:
+  - **Basic:** Addition, Subtraction, Multiplication, Division
+  - **Power:** Square, Cube, Square Root, Cube Root
+  - **Advanced:** Modulo, Power, Percentage, Factorial
+- 5 difficulty tiers (Beginner to Expert) with intelligent difficulty scoring
+- Timed sessions (30s, 60s, 90s, 2min)
+- 7 game modes (4 sprints + Mixed Operations + Speed Round + Endurance)
+- Arcade-style scoring with streaks and multipliers
+- Local statistics tracking with per-session and per-question data
 - Terminal-native design (inherits your theme)
+
+### Coming Soon
+
+- Quick Play (instant launch with last mode)
+- Practice mode (no timer, no pressure)
+- Settings and onboarding
+- CLI subcommands (`arithmego play`, `arithmego stats`)
 
 ---
 
@@ -31,6 +44,17 @@ Coming soon.
 
 ```bash
 curl -fsSL https://arithmego.com/install.sh | bash
+```
+
+---
+
+## Development
+
+```bash
+make build    # Build for current platform
+make run      # Build and run
+make test     # Run tests
+make lint     # Run linter
 ```
 
 ---

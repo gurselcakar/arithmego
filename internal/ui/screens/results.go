@@ -12,22 +12,19 @@ import (
 	"github.com/gurselcakar/arithmego/internal/ui/styles"
 )
 
-// Phase 5: Add detailed breakdown
-// - Per-operation accuracy
-// - Response time stats
-// - Save to statistics storage
-
 // ResultsModel represents the results screen.
 type ResultsModel struct {
-	session *game.Session
-	width   int
-	height  int
+	session   *game.Session
+	saveError error
+	width     int
+	height    int
 }
 
 // NewResults creates a new results model.
-func NewResults(session *game.Session) ResultsModel {
+func NewResults(session *game.Session, saveError error) ResultsModel {
 	return ResultsModel{
-		session: session,
+		session:   session,
+		saveError: saveError,
 	}
 }
 
@@ -93,6 +90,12 @@ func (m ResultsModel) View() string {
 	// Hints
 	hints := components.RenderHints([]string{"[Enter] Play again", "[M] Main menu"})
 
+	// Save error warning (if any)
+	var saveWarning string
+	if m.saveError != nil {
+		saveWarning = styles.Dim.Render("(Statistics could not be saved)")
+	}
+
 	// Combine
 	var contentParts []string
 	contentParts = append(contentParts, title, "", "")
@@ -103,6 +106,9 @@ func (m ResultsModel) View() string {
 		contentParts = append(contentParts, bestStreak)
 	}
 	contentParts = append(contentParts, "", "", hints)
+	if saveWarning != "" {
+		contentParts = append(contentParts, "", saveWarning)
+	}
 
 	content := lipgloss.JoinVertical(lipgloss.Center, contentParts...)
 

@@ -150,7 +150,7 @@ arithmego/
 
 | Principle | Implementation |
 |-----------|----------------|
-| **Separation of concerns** | Game logic has no UI imports. UI has no storage imports. |
+| **Separation of concerns** | Game logic has no UI or storage imports. Storage has no UI or game imports. |
 | **Extensibility** | Operation interface allows easy addition of new operations. |
 | **Testability** | Core logic is pure Go, unit testable without TUI. |
 | **Open/Closed** | Add operations without modifying existing code. |

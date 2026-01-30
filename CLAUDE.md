@@ -2,7 +2,7 @@
 
 Command-line arithmetic game for developers. Built with Go, Bubble Tea, and Cobra.
 
-**Status:** Phase 4 complete, ready to start Phase 5
+**Status:** Phase 5 complete, ready to start Phase 6
 
 ## Docs
 
@@ -25,5 +25,5 @@ make lint     # Run linter
 
 - Follow standard Go conventions
 - Use `internal/` for all packages (no public API)
-- Game logic in `internal/game/` must have no UI imports
-- UI code in `internal/ui/` must have no storage imports
+- Game logic in `internal/game/` must have no UI or storage imports
+- Storage logic in `internal/storage/` must have no UI or game imports

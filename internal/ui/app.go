@@ -7,6 +7,7 @@ import (
 
 	"github.com/gurselcakar/arithmego/internal/game"
 	"github.com/gurselcakar/arithmego/internal/modes"
+	"github.com/gurselcakar/arithmego/internal/storage"
 	"github.com/gurselcakar/arithmego/internal/ui/screens"
 )
 
@@ -33,6 +34,9 @@ type App struct {
 	currentMode    *modes.Mode
 	lastDifficulty game.Difficulty
 	lastDuration   time.Duration
+
+	// Error tracking
+	lastSaveError error
 }
 
 // New creates a new App instance.
@@ -105,6 +109,8 @@ func (a *App) updateMenu(msg tea.Msg) (tea.Model, tea.Cmd) {
 			a.screen = ScreenPractice
 			return a, a.practiceModel.Init()
 		case screens.ActionStatistics:
+			a.statisticsModel = screens.NewStatistics()
+			a.statisticsModel.SetSize(a.width, a.height)
 			a.screen = ScreenStatistics
 			return a, a.statisticsModel.Init()
 		case screens.ActionSettings:
@@ -129,7 +135,8 @@ func (a *App) updateGame(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Check for game over
 	if gom, ok := msg.(screens.GameOverMsg); ok {
 		a.session = gom.Session
-		a.resultsModel = screens.NewResults(a.session)
+		a.saveSession()
+		a.resultsModel = screens.NewResults(a.session, a.lastSaveError)
 		a.resultsModel.SetSize(a.width, a.height)
 		a.screen = ScreenResults
 		return a, a.resultsModel.Init()
@@ -330,6 +337,49 @@ func (a *App) View() string {
 	default:
 		return ""
 	}
+}
+
+// saveSession saves the completed session to statistics storage.
+func (a *App) saveSession() {
+	if a.session == nil || a.currentMode == nil {
+		return
+	}
+
+	// Build the session record
+	record, err := storage.NewSessionRecord(
+		a.currentMode.Name,
+		a.lastDifficulty.String(),
+		int(a.lastDuration.Seconds()),
+	)
+	if err != nil {
+		a.lastSaveError = err
+		return
+	}
+
+	record.QuestionsAttempted = a.session.TotalAnswered() + a.session.Skipped
+	record.QuestionsCorrect = a.session.Correct
+	record.QuestionsWrong = a.session.Incorrect
+	record.QuestionsSkipped = a.session.Skipped
+	record.Score = a.session.Score
+	record.BestStreak = a.session.BestStreak
+	record.AvgResponseTimeMs = a.session.AvgResponseTime().Milliseconds()
+
+	// Convert question history
+	for _, h := range a.session.History {
+		record.Questions = append(record.Questions, storage.QuestionRecord{
+			Question:       h.Question,
+			Operation:      h.Operation,
+			CorrectAnswer:  h.CorrectAnswer,
+			UserAnswer:     h.UserAnswer,
+			Correct:        h.Correct,
+			Skipped:        h.Skipped,
+			ResponseTimeMs: h.ResponseTime.Milliseconds(),
+			PointsEarned:   h.PointsEarned,
+		})
+	}
+
+	// Save to storage - track error but don't disrupt gameplay flow
+	a.lastSaveError = storage.AddSession(record)
 }
 
 // Phase 9: Replace main.go with Cobra CLI

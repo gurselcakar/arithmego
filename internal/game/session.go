@@ -2,8 +2,19 @@ package game
 
 import "time"
 
+// QuestionHistory stores data for a single answered question.
+type QuestionHistory struct {
+	Question      string
+	Operation     string
+	CorrectAnswer int
+	UserAnswer    int
+	Correct       bool
+	Skipped       bool
+	ResponseTime  time.Duration
+	PointsEarned  int
+}
+
 // Session tracks the state of a single game session.
-// Phase 5: Extend with per-question history (response times, answers given)
 type Session struct {
 	// Configuration (immutable after creation)
 	Operations []Operation
@@ -18,16 +29,19 @@ type Session struct {
 	Current       *Question
 	QuestionStart time.Time // When current question was shown
 
-	// Results (Phase 5: Replace with detailed QuestionHistory slice)
+	// Results
 	Correct   int
 	Incorrect int
 	Skipped   int
 
-	// Scoring (Phase 4)
-	Score       int        // Running total
-	Streak      int        // Current consecutive correct answers
-	BestStreak  int        // Session high streak
-	LastResult  *ScoreResult // Result of last answer (for UI feedback)
+	// Per-question history
+	History []QuestionHistory
+
+	// Scoring
+	Score      int          // Running total
+	Streak     int          // Current consecutive correct answers
+	BestStreak int          // Session high streak
+	LastResult *ScoreResult // Result of last answer (for UI feedback)
 }
 
 // NewSession creates a new game session with the given configuration.
@@ -38,6 +52,7 @@ func NewSession(ops []Operation, diff Difficulty, duration time.Duration) *Sessi
 		Difficulty: diff,
 		Duration:   duration,
 		TimeLeft:   duration,
+		History:    []QuestionHistory{},
 	}
 }
 
@@ -83,6 +98,7 @@ func (s *Session) SubmitAnswer(answer int) bool {
 	result := s.Current.CheckAnswer(answer)
 	responseTime := time.Since(s.QuestionStart)
 
+	var points int
 	if result.Correct {
 		s.Correct++
 		scoreResult := CalculateCorrectAnswer(s.Difficulty, responseTime, s.Streak)
@@ -92,13 +108,27 @@ func (s *Session) SubmitAnswer(answer int) bool {
 			s.BestStreak = s.Streak
 		}
 		s.LastResult = &scoreResult
+		points = scoreResult.Points
 	} else {
 		s.Incorrect++
 		scoreResult := CalculateWrongAnswer()
 		s.Score += scoreResult.Points
 		s.Streak = 0
 		s.LastResult = &scoreResult
+		points = scoreResult.Points
 	}
+
+	// Record question history
+	s.History = append(s.History, QuestionHistory{
+		Question:      s.Current.Display,
+		Operation:     s.Current.Operation.Name(),
+		CorrectAnswer: s.Current.Answer,
+		UserAnswer:    answer,
+		Correct:       result.Correct,
+		Skipped:       false,
+		ResponseTime:  responseTime,
+		PointsEarned:  points,
+	})
 
 	s.NextQuestion()
 	return result.Correct
@@ -106,9 +136,23 @@ func (s *Session) SubmitAnswer(answer int) bool {
 
 // Skip skips the current question without answering.
 func (s *Session) Skip() {
+	// Record skipped question before moving to next
+	if s.Current != nil {
+		s.History = append(s.History, QuestionHistory{
+			Question:      s.Current.Display,
+			Operation:     s.Current.Operation.Name(),
+			CorrectAnswer: s.Current.Answer,
+			UserAnswer:    0,
+			Correct:       false,
+			Skipped:       true,
+			ResponseTime:  time.Since(s.QuestionStart),
+			PointsEarned:  0,
+		})
+	}
+
 	s.Skipped++
 	scoreResult := CalculateSkip()
-	s.Score += scoreResult.Points // Currently 0, but consistent with SubmitAnswer pattern
+	s.Score += scoreResult.Points
 	s.Streak = 0
 	s.LastResult = &scoreResult
 	s.NextQuestion()
@@ -147,4 +191,25 @@ func (s *Session) Multiplier() float64 {
 // ClearLastResult clears the last result after UI has displayed it.
 func (s *Session) ClearLastResult() {
 	s.LastResult = nil
+}
+
+// AvgResponseTime returns the average response time for answered questions.
+func (s *Session) AvgResponseTime() time.Duration {
+	if len(s.History) == 0 {
+		return 0
+	}
+
+	var total time.Duration
+	var count int
+	for _, h := range s.History {
+		if !h.Skipped {
+			total += h.ResponseTime
+			count++
+		}
+	}
+
+	if count == 0 {
+		return 0
+	}
+	return total / time.Duration(count)
 }

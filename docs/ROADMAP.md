@@ -13,7 +13,7 @@ Development phases for ArithmeGo.
 | 2 | Basic TUI | Complete |
 | 3 | Modes System | Complete |
 | 4 | Scoring | Complete |
-| 5 | Statistics | Planned |
+| 5 | Statistics | Complete |
 | 6 | Quick Play | Planned |
 | 7 | Practice Mode | Planned |
 | 8 | Settings & Onboarding | Planned |
@@ -86,6 +86,17 @@ Includes:
 ### Phase 5: Statistics
 
 Track and display performance. Per-session and per-question data. Statistics screen.
+
+Includes:
+- Storage package for persistent data (`~/.config/arithmego/statistics.json`)
+- Per-session tracking (mode, difficulty, duration, score, streak, accuracy)
+- Per-question tracking (operation, response time, correct/wrong/skipped)
+- Automatic session saving on game completion
+- Statistics screen with summary and detailed views
+- Summary view: total sessions, accuracy, per-operation accuracy grid
+- Detailed view: breakdown by operation, by mode, best streak ever
+- Aggregates computed on demand (not stored)
+- Comprehensive test coverage for storage operations
 
 ### Phase 6: Quick Play
 
