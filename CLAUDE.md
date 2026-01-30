@@ -2,7 +2,7 @@
 
 Command-line arithmetic game for developers. Built with Go, Bubble Tea, and Cobra.
 
-**Status:** Phase 5 complete, ready to start Phase 6
+**Status:** Phase 6 complete (Quick Play feature)
 
 ## Docs
 

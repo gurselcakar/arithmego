@@ -35,20 +35,46 @@ type App struct {
 	lastDifficulty game.Difficulty
 	lastDuration   time.Duration
 
+	// User settings (for Quick Play)
+	settings *storage.Settings
+
 	// Error tracking
 	lastSaveError error
 }
 
 // New creates a new App instance.
 func New() *App {
+	// Load settings (ignore errors, use empty settings as fallback)
+	settings, _ := storage.LoadSettings()
+	if settings == nil {
+		settings = &storage.Settings{}
+	}
+
+	// Build menu with Quick Play if we have last played data
+	var menuModel screens.MenuModel
+	if settings.HasLastPlayed() {
+		if mode, ok := modes.Get(settings.LastPlayedModeID); ok {
+			menuModel = screens.NewMenuWithQuickPlay(&screens.QuickPlayInfo{
+				ModeName: mode.Name,
+			})
+		} else {
+			// Mode no longer exists, clear invalid settings
+			settings = &storage.Settings{}
+			menuModel = screens.NewMenu()
+		}
+	} else {
+		menuModel = screens.NewMenu()
+	}
+
 	return &App{
 		screen:          ScreenMenu,
-		menuModel:       screens.NewMenu(),
+		menuModel:       menuModel,
 		modesModel:      screens.NewModes(),
 		practiceModel:   screens.NewPractice(),
 		statisticsModel: screens.NewStatistics(),
 		settingsModel:   screens.NewSettings(),
 		onboardingModel: screens.NewOnboarding(),
+		settings:        settings,
 	}
 }
 
@@ -100,12 +126,16 @@ func (a *App) updateMenu(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Check for menu selection
 	if selectMsg, ok := msg.(screens.MenuSelectMsg); ok {
 		switch selectMsg.Action {
+		case screens.ActionQuickPlay:
+			return a.startQuickPlay()
 		case screens.ActionModes:
 			a.modesModel = screens.NewModes()
 			a.modesModel.SetSize(a.width, a.height)
 			a.screen = ScreenModes
 			return a, a.modesModel.Init()
 		case screens.ActionPractice:
+			a.practiceModel = screens.NewPractice()
+			a.practiceModel.SetSize(a.width, a.height)
 			a.screen = ScreenPractice
 			return a, a.practiceModel.Init()
 		case screens.ActionStatistics:
@@ -192,6 +222,7 @@ func (a *App) updateResults(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	// Check for return to menu
 	if _, ok := msg.(screens.ReturnToMenuMsg); ok {
+		a.rebuildMenu()
 		a.screen = ScreenMenu
 		a.session = nil
 		return a, nil
@@ -311,6 +342,67 @@ func (a *App) startGame() (tea.Model, tea.Cmd) {
 	return a, a.gameModel.Init()
 }
 
+// startQuickPlay starts a game with the last played settings.
+func (a *App) startQuickPlay() (tea.Model, tea.Cmd) {
+	if a.settings == nil || !a.settings.HasLastPlayed() {
+		// Fallback to modes screen if no last played data
+		a.modesModel = screens.NewModes()
+		a.modesModel.SetSize(a.width, a.height)
+		a.screen = ScreenModes
+		return a, a.modesModel.Init()
+	}
+
+	// Load mode from registry
+	mode, ok := modes.Get(a.settings.LastPlayedModeID)
+	if !ok {
+		// Mode no longer exists, fallback to modes screen
+		a.modesModel = screens.NewModes()
+		a.modesModel.SetSize(a.width, a.height)
+		a.screen = ScreenModes
+		return a, a.modesModel.Init()
+	}
+
+	// Set up game state from settings
+	a.currentMode = mode
+	a.lastDifficulty = game.ParseDifficulty(a.settings.LastPlayedDifficulty)
+	a.lastDuration = time.Duration(a.settings.LastPlayedDurationMs) * time.Millisecond
+
+	return a.startGame()
+}
+
+// saveLastPlayed saves the current game configuration to settings.
+// Must only be called from the main Bubble Tea update loop (single-threaded).
+func (a *App) saveLastPlayed() {
+	if a.settings == nil {
+		a.settings = &storage.Settings{}
+	}
+	if a.currentMode == nil {
+		return
+	}
+
+	a.settings.LastPlayedModeID = a.currentMode.ID
+	a.settings.LastPlayedDifficulty = a.lastDifficulty.String()
+	a.settings.LastPlayedDurationMs = a.lastDuration.Milliseconds()
+
+	// Ignore save errors - settings are non-critical
+	_ = storage.SaveSettings(a.settings)
+}
+
+// rebuildMenu rebuilds the menu model with current Quick Play state.
+func (a *App) rebuildMenu() {
+	if a.settings != nil && a.settings.HasLastPlayed() {
+		if mode, ok := modes.Get(a.settings.LastPlayedModeID); ok {
+			a.menuModel = screens.NewMenuWithQuickPlay(&screens.QuickPlayInfo{
+				ModeName: mode.Name,
+			})
+			a.menuModel.SetSize(a.width, a.height)
+			return
+		}
+	}
+	a.menuModel = screens.NewMenu()
+	a.menuModel.SetSize(a.width, a.height)
+}
+
 // View renders the current screen.
 func (a *App) View() string {
 	switch a.screen {
@@ -380,6 +472,9 @@ func (a *App) saveSession() {
 
 	// Save to storage - track error but don't disrupt gameplay flow
 	a.lastSaveError = storage.AddSession(record)
+
+	// Save last played settings for Quick Play
+	a.saveLastPlayed()
 }
 
 // Phase 9: Replace main.go with Cobra CLI

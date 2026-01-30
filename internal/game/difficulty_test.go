@@ -88,3 +88,27 @@ func TestAllDifficulties(t *testing.T) {
 		}
 	}
 }
+
+func TestParseDifficulty(t *testing.T) {
+	tests := []struct {
+		input  string
+		expect Difficulty
+	}{
+		{"Beginner", Beginner},
+		{"Easy", Easy},
+		{"Medium", Medium},
+		{"Hard", Hard},
+		{"Expert", Expert},
+		{"", Medium},         // default
+		{"invalid", Medium},  // default
+		{"beginner", Medium}, // case sensitive
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			if got := ParseDifficulty(tt.input); got != tt.expect {
+				t.Errorf("ParseDifficulty(%q) = %v, want %v", tt.input, got, tt.expect)
+			}
+		})
+	}
+}

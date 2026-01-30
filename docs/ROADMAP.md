@@ -14,7 +14,7 @@ Development phases for ArithmeGo.
 | 3 | Modes System | Complete |
 | 4 | Scoring | Complete |
 | 5 | Statistics | Complete |
-| 6 | Quick Play | Planned |
+| 6 | Quick Play | Complete |
 | 7 | Practice Mode | Planned |
 | 8 | Settings & Onboarding | Planned |
 | 9 | CLI Commands | Planned |
@@ -101,6 +101,15 @@ Includes:
 ### Phase 6: Quick Play
 
 Remember last played mode. Quick Play option on main menu for returning users.
+
+Includes:
+- Settings storage (`~/.config/arithmego/settings.json`)
+- Persistent last-played configuration (mode, difficulty, duration)
+- Quick Play menu item showing last played mode name
+- Instant game start with saved settings
+- Automatic settings update after each completed game
+- Graceful handling of removed modes and corrupted settings
+- Comprehensive test coverage for settings operations
 
 ### Phase 7: Practice Mode
 

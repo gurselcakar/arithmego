@@ -21,15 +21,17 @@ type MenuItem struct {
 type MenuAction int
 
 const (
-	ActionModes MenuAction = iota
+	ActionQuickPlay MenuAction = iota
+	ActionModes
 	ActionPractice
 	ActionStatistics
 	ActionSettings
 )
 
-// Phase 6: Add Quick Play as first menu item (conditional on hasPlayedBefore)
-// Quick Play shows current mode: "> Quick Play · Addition Sprint"
-// Right arrow on Quick Play enters mode switch: "[◀ Addition Sprint ▶]"
+// QuickPlayInfo contains information for displaying the Quick Play menu item.
+type QuickPlayInfo struct {
+	ModeName string
+}
 
 // MenuModel represents the main menu screen.
 type MenuModel struct {
@@ -40,10 +42,29 @@ type MenuModel struct {
 	quitting bool
 }
 
-// NewMenu creates a new menu model.
+// NewMenu creates a new menu model without Quick Play.
 func NewMenu() MenuModel {
 	return MenuModel{
 		items: []MenuItem{
+			{Label: "Modes", Action: ActionModes},
+			{Label: "Practice", Action: ActionPractice},
+			{IsSpacer: true},
+			{Label: "Statistics", Action: ActionStatistics},
+			{Label: "Settings", Action: ActionSettings},
+		},
+		cursor: 0,
+	}
+}
+
+// NewMenuWithQuickPlay creates a new menu model with Quick Play as the first item.
+func NewMenuWithQuickPlay(quickPlay *QuickPlayInfo) MenuModel {
+	label := "Quick Play"
+	if quickPlay != nil && quickPlay.ModeName != "" {
+		label = "Quick Play · " + quickPlay.ModeName
+	}
+	return MenuModel{
+		items: []MenuItem{
+			{Label: label, Action: ActionQuickPlay},
 			{Label: "Modes", Action: ActionModes},
 			{Label: "Practice", Action: ActionPractice},
 			{IsSpacer: true},
@@ -177,4 +198,10 @@ func (m MenuModel) View() string {
 // Quitting returns true if the user is quitting.
 func (m MenuModel) Quitting() bool {
 	return m.quitting
+}
+
+// SetSize updates the screen dimensions.
+func (m *MenuModel) SetSize(width, height int) {
+	m.width = width
+	m.height = height
 }
