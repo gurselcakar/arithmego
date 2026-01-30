@@ -13,26 +13,56 @@ import (
 	"github.com/gurselcakar/arithmego/internal/ui/styles"
 )
 
-// Phase 4: Add scoreboard component (top left)
-// - Points display with animation
-// - Streak counter
-// - Brief green/red flash on answer
+// Feedback display durations
+const (
+	feedbackDuration  = 1 * time.Second
+	deltaDisplayTime  = 1 * time.Second
+	milestoneShowTime = 2 * time.Second
+)
+
+// Score animation constants
+const (
+	// scoreAnimInterval: 30ms = ~33 FPS, provides smooth visual updates without excessive CPU use
+	scoreAnimInterval = 30 * time.Millisecond
+	// scoreAnimEasing: 30% per tick creates natural deceleration (fast start, slow finish)
+	// Results in ~10 ticks (~300ms) to reach target from typical score changes
+	scoreAnimEasing = 0.3
+	// scoreAnimMinStep: prevents infinitely slow final ticks when remaining distance < 17
+	// (since 0.3 * 16 = 4.8 rounds to 4, then 3, 2, 1... taking many ticks)
+	scoreAnimMinStep = 5
+)
 
 // GameModel represents the gameplay screen.
 type GameModel struct {
-	session        *game.Session
-	input          components.InputModel
-	width          int
-	height         int
+	session *game.Session
+	input   components.InputModel
+	width   int
+	height  int
+
+	// Visual feedback state
 	feedback       string    // "correct", "incorrect", or ""
 	feedbackExpiry time.Time // when feedback should clear
+
+	// Scoring display state
+	tick            int       // for shimmer animation (increments each second)
+	scoreDelta      int       // points from last answer (for delta popup)
+	deltaExpiry     time.Time // when delta popup should clear
+	milestone       string    // milestone text (e.g., "×1.25", "×2.0 MAX")
+	milestoneExpiry time.Time // when milestone should clear
+
+	// Score animation state
+	displayScore int  // currently displayed score (animates toward actual)
+	animating    bool // whether score animation is in progress
 }
 
 // NewGame creates a new game model with the given session.
+// Note: displayScore starts at 0 to match session's initial score.
+// The rendering logic handles any sync issues via fallback to session.Score.
 func NewGame(session *game.Session) GameModel {
 	return GameModel{
-		session: session,
-		input:   components.NewInput(),
+		session:      session,
+		input:        components.NewInput(),
+		displayScore: 0, // Explicit: matches session.Score after Start()
 	}
 }
 
@@ -52,6 +82,16 @@ type tickMsg time.Time
 func TickCmd() tea.Cmd {
 	return tea.Tick(time.Second, func(t time.Time) tea.Msg {
 		return tickMsg(t)
+	})
+}
+
+// scoreAnimMsg is sent rapidly during score animation.
+type scoreAnimMsg time.Time
+
+// ScoreAnimCmd returns a command for the fast score animation tick.
+func ScoreAnimCmd() tea.Cmd {
+	return tea.Tick(scoreAnimInterval, func(t time.Time) tea.Msg {
+		return scoreAnimMsg(t)
 	})
 }
 
@@ -75,16 +115,63 @@ func (m GameModel) Update(msg tea.Msg) (GameModel, tea.Cmd) {
 
 	case tickMsg:
 		m.session.Tick()
+		m.tick++ // increment for shimmer animation
+
 		if m.session.IsFinished() {
 			return m, func() tea.Msg {
 				return GameOverMsg{Session: m.session}
 			}
 		}
-		// Clear feedback if expired
-		if m.feedback != "" && time.Now().After(m.feedbackExpiry) {
+
+		// Clear expired feedback states
+		now := time.Now()
+		if m.feedback != "" && now.After(m.feedbackExpiry) {
 			m.feedback = ""
 		}
+		if m.scoreDelta != 0 && now.After(m.deltaExpiry) {
+			m.scoreDelta = 0
+		}
+		if m.milestone != "" && now.After(m.milestoneExpiry) {
+			m.milestone = ""
+		}
+
 		return m, TickCmd()
+
+	case scoreAnimMsg:
+		if !m.animating {
+			return m, nil
+		}
+
+		target := m.session.Score
+		diff := target - m.displayScore
+
+		if diff == 0 {
+			m.animating = false
+			return m, nil
+		}
+
+		// Calculate step with easing (move percentage of remaining distance)
+		step := int(float64(diff) * scoreAnimEasing)
+
+		// Ensure minimum step to avoid slow crawl at the end
+		if step == 0 {
+			if diff > 0 {
+				step = min(scoreAnimMinStep, diff)
+			} else {
+				step = max(-scoreAnimMinStep, diff)
+			}
+		}
+
+		m.displayScore += step
+
+		// Check if we've reached target
+		if (diff > 0 && m.displayScore >= target) || (diff < 0 && m.displayScore <= target) {
+			m.displayScore = target
+			m.animating = false
+			return m, nil
+		}
+
+		return m, ScoreAnimCmd()
 
 	case tea.KeyMsg:
 		switch msg.String() {
@@ -108,35 +195,59 @@ func (m GameModel) Update(msg tea.Msg) (GameModel, tea.Cmd) {
 }
 
 // submitAnswer checks the current answer and moves to the next question.
+// Note: Input validation (numeric-only) is handled by the InputModel component.
+// The strconv check here is a safety net for edge cases (e.g., just "-").
 func (m GameModel) submitAnswer() (GameModel, tea.Cmd) {
 	val := m.input.Value()
 	if val == "" {
-		return m, nil
+		return m, nil // User must type something; "0" for zero answers
 	}
 
 	answer, err := strconv.Atoi(val)
 	if err != nil {
-		return m, nil
+		return m, nil // Safety net for edge cases like "-" only
 	}
 
 	correct := m.session.SubmitAnswer(answer)
 	m.input.Reset()
 
+	// Set feedback
 	if correct {
 		m.feedback = "correct"
 	} else {
 		m.feedback = "incorrect"
 	}
-	m.feedbackExpiry = time.Now().Add(2 * time.Second)
+	m.feedbackExpiry = time.Now().Add(feedbackDuration)
+
+	// Set score delta for display and start animation
+	var cmd tea.Cmd
+	if m.session.LastResult != nil {
+		m.scoreDelta = m.session.LastResult.Points
+		m.deltaExpiry = time.Now().Add(deltaDisplayTime)
+
+		// Start score animation
+		if m.session.Score != m.displayScore {
+			m.animating = true
+			cmd = ScoreAnimCmd()
+		}
+
+		// Check for milestone
+		if m.session.LastResult.IsMilestone {
+			m.milestone = game.GetMilestoneAnnouncement(m.session.LastResult.NewStreak)
+			m.milestoneExpiry = time.Now().Add(milestoneShowTime)
+		}
+	}
 
 	// Check if game is over
 	if m.session.IsFinished() {
+		m.animating = false
+		m.displayScore = m.session.Score
 		return m, func() tea.Msg {
 			return GameOverMsg{Session: m.session}
 		}
 	}
 
-	return m, nil
+	return m, cmd
 }
 
 // skipQuestion skips the current question.
@@ -145,6 +256,11 @@ func (m GameModel) skipQuestion() (GameModel, tea.Cmd) {
 	m.input.Reset()
 	m.feedback = ""
 	m.feedbackExpiry = time.Time{}
+	m.scoreDelta = 0
+	m.deltaExpiry = time.Time{}
+	// Sync animation state (skip doesn't change score, but stop any in-progress animation)
+	m.animating = false
+	m.displayScore = m.session.Score
 	return m, nil
 }
 
@@ -157,8 +273,8 @@ func (m GameModel) View() string {
 		return "Loading..."
 	}
 
-	// Timer (top right)
-	timer := components.FormatTimer(m.session.TimeLeft)
+	// Build top row: scoreboard (left) | score+delta (center) | timer (right)
+	topRow := m.renderTopRow()
 
 	// Question (center)
 	var question string
@@ -178,40 +294,30 @@ func (m GameModel) View() string {
 	// Hints
 	hints := components.RenderHints([]string{"[S] Skip", "[P] Pause"})
 
-	// Layout
-	// Top row with timer on right
-	timerLine := lipgloss.NewStyle().Width(m.width).Align(lipgloss.Right).Render(timer)
-
-	// Center content
+	// Center content (milestone is now shown above score in top row)
 	centerContent := lipgloss.JoinVertical(lipgloss.Center,
 		question,
 		"",
 		inputView,
 	)
 
-	// Combine
-	content := lipgloss.JoinVertical(lipgloss.Left,
-		timerLine,
-		"",
-		"",
-	)
-
 	// Place centered content in middle
 	if m.width > 0 && m.height > 0 {
-		// Calculate available height after timer
-		availHeight := m.height - 4 // timer line + spacing + hints
+		// Calculate available height after top row
+		availHeight := m.height - 5 // top row + spacing + hints
 
 		centeredQuestion := lipgloss.Place(m.width, availHeight-4, lipgloss.Center, lipgloss.Center, centerContent)
 		hintsLine := lipgloss.Place(m.width, 1, lipgloss.Center, lipgloss.Bottom, hints)
 
-		content = lipgloss.JoinVertical(lipgloss.Left,
-			timerLine,
+		content := lipgloss.JoinVertical(lipgloss.Left,
+			topRow,
 			centeredQuestion,
 			hintsLine,
 		)
+		b.WriteString(content)
 	} else {
-		content = lipgloss.JoinVertical(lipgloss.Center,
-			timerLine,
+		content := lipgloss.JoinVertical(lipgloss.Center,
+			topRow,
 			"",
 			"",
 			centerContent,
@@ -219,10 +325,98 @@ func (m GameModel) View() string {
 			"",
 			hints,
 		)
+		b.WriteString(content)
 	}
 
-	b.WriteString(content)
 	return b.String()
+}
+
+// renderTopRow renders the top status bar with scoreboard, score, and timer.
+func (m GameModel) renderTopRow() string {
+	if m.width == 0 {
+		// Fallback for unknown width
+		return m.renderTopRowSimple()
+	}
+
+	// Left: Scoreboard (multiplier + streak bar)
+	scoreboard := components.RenderScoreboard(m.session.Streak, m.tick)
+
+	// Center: Score with delta popup
+	scoreDisplay := m.renderScoreWithDelta()
+
+	// Right: Timer with "remaining" label
+	timer := components.FormatTimer(m.session.TimeLeft)
+	timerWithLabel := lipgloss.JoinVertical(lipgloss.Right,
+		timer,
+		styles.Dim.Render("remaining"),
+	)
+
+	// Calculate column widths
+	leftWidth := m.width / 4
+	rightWidth := m.width / 4
+	centerWidth := m.width - leftWidth - rightWidth
+
+	// Style each column
+	leftCol := lipgloss.NewStyle().Width(leftWidth).Align(lipgloss.Left).Render(scoreboard)
+	centerCol := lipgloss.NewStyle().Width(centerWidth).Align(lipgloss.Center).Render(scoreDisplay)
+	rightCol := lipgloss.NewStyle().Width(rightWidth).Align(lipgloss.Right).Render(timerWithLabel)
+
+	return lipgloss.JoinHorizontal(lipgloss.Top, leftCol, centerCol, rightCol)
+}
+
+// renderTopRowSimple renders a simpler top row when width is unknown.
+func (m GameModel) renderTopRowSimple() string {
+	scoreboard := components.RenderScoreboard(m.session.Streak, m.tick)
+	// Use displayScore during animation, actual score otherwise
+	scoreValue := m.displayScore
+	if !m.animating {
+		scoreValue = m.session.Score
+	}
+	score := components.RenderScore(scoreValue)
+	timer := components.FormatTimer(m.session.TimeLeft)
+
+	return lipgloss.JoinHorizontal(lipgloss.Top,
+		scoreboard,
+		"    ",
+		score,
+		"    ",
+		timer,
+	)
+}
+
+// renderScoreWithDelta renders the score with milestone and delta popup above it.
+func (m GameModel) renderScoreWithDelta() string {
+	// During animation, show the animating displayScore.
+	// When not animating, displayScore should equal session.Score.
+	// The fallback to session.Score handles edge cases (e.g., if animation
+	// state gets out of sync due to rapid state changes).
+	scoreValue := m.displayScore
+	if !m.animating {
+		scoreValue = m.session.Score
+	}
+	score := components.RenderScoreLarge(scoreValue)
+
+	// Build the display from top to bottom: milestone, delta, score
+	var parts []string
+
+	// Milestone (if active) - shows multiplier like "×1.25" or "×2.0 MAX"
+	if m.milestone != "" {
+		parts = append(parts, styles.Milestone.Render(m.milestone))
+	} else {
+		parts = append(parts, "") // empty line for consistent height
+	}
+
+	// Delta popup (+150 or -25)
+	if m.scoreDelta != 0 {
+		parts = append(parts, components.RenderScoreDelta(m.scoreDelta))
+	} else {
+		parts = append(parts, "") // empty line for consistent height
+	}
+
+	// Score
+	parts = append(parts, score)
+
+	return lipgloss.JoinVertical(lipgloss.Center, parts...)
 }
 
 // Session returns the current game session.
@@ -231,7 +425,11 @@ func (m GameModel) Session() *game.Session {
 }
 
 // SetSession updates the game session (used when resuming from pause).
+// Panics if session is nil.
 func (m *GameModel) SetSession(session *game.Session) {
+	if session == nil {
+		panic("SetSession: session cannot be nil")
+	}
 	m.session = session
 }
 

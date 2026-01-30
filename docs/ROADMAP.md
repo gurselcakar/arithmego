@@ -12,7 +12,7 @@ Development phases for ArithmeGo.
 | 1 | Core Game Loop | Complete |
 | 2 | Basic TUI | Complete |
 | 3 | Modes System | Complete |
-| 4 | Scoring | Planned |
+| 4 | Scoring | Complete |
 | 5 | Statistics | Planned |
 | 6 | Quick Play | Planned |
 | 7 | Practice Mode | Planned |
@@ -70,6 +70,18 @@ Includes:
 ### Phase 4: Scoring
 
 Gamified scoring. Difficulty multipliers, time bonuses, streaks, arcade-style display.
+
+Includes:
+- Scoring engine with difficulty multipliers (0.5x–2.0x)
+- Time bonus system (1.5x for <2s, linear decay to 1.0x at 10s)
+- Streak system with 7 tiers: None, Building, Streak, Max, Blazing, Unstoppable, Legendary
+- Streak multiplier (1.0x–2.0x, +0.25 every 5 correct)
+- Milestone announcements at streak thresholds (5, 10, 15, 20, 25)
+- Animated score display with easing
+- Visual streak bar with tier-based styling and shimmer effects
+- Delta popup showing points gained/lost
+- Best streak tracking per session
+- Comprehensive test coverage for scoring calculations
 
 ### Phase 5: Statistics
 

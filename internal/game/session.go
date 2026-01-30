@@ -15,12 +15,19 @@ type Session struct {
 	TimeLeft  time.Duration
 
 	// Current question
-	Current *Question
+	Current       *Question
+	QuestionStart time.Time // When current question was shown
 
 	// Results (Phase 5: Replace with detailed QuestionHistory slice)
 	Correct   int
 	Incorrect int
 	Skipped   int
+
+	// Scoring (Phase 4)
+	Score       int        // Running total
+	Streak      int        // Current consecutive correct answers
+	BestStreak  int        // Session high streak
+	LastResult  *ScoreResult // Result of last answer (for UI feedback)
 }
 
 // NewSession creates a new game session with the given configuration.
@@ -38,6 +45,10 @@ func NewSession(ops []Operation, diff Difficulty, duration time.Duration) *Sessi
 func (s *Session) Start() {
 	s.StartTime = time.Now()
 	s.TimeLeft = s.Duration
+	s.Score = 0
+	s.Streak = 0
+	s.BestStreak = 0
+	s.LastResult = nil
 	s.NextQuestion()
 }
 
@@ -59,6 +70,7 @@ func (s *Session) IsFinished() bool {
 func (s *Session) NextQuestion() {
 	q := GenerateQuestion(s.Operations, s.Difficulty)
 	s.Current = &q
+	s.QuestionStart = time.Now()
 }
 
 // SubmitAnswer checks the user's answer and updates statistics.
@@ -69,10 +81,23 @@ func (s *Session) SubmitAnswer(answer int) bool {
 	}
 
 	result := s.Current.CheckAnswer(answer)
+	responseTime := time.Since(s.QuestionStart)
+
 	if result.Correct {
 		s.Correct++
+		scoreResult := CalculateCorrectAnswer(s.Difficulty, responseTime, s.Streak)
+		s.Score += scoreResult.Points
+		s.Streak = scoreResult.NewStreak
+		if s.Streak > s.BestStreak {
+			s.BestStreak = s.Streak
+		}
+		s.LastResult = &scoreResult
 	} else {
 		s.Incorrect++
+		scoreResult := CalculateWrongAnswer()
+		s.Score += scoreResult.Points
+		s.Streak = 0
+		s.LastResult = &scoreResult
 	}
 
 	s.NextQuestion()
@@ -82,6 +107,10 @@ func (s *Session) SubmitAnswer(answer int) bool {
 // Skip skips the current question without answering.
 func (s *Session) Skip() {
 	s.Skipped++
+	scoreResult := CalculateSkip()
+	s.Score += scoreResult.Points // Currently 0, but consistent with SubmitAnswer pattern
+	s.Streak = 0
+	s.LastResult = &scoreResult
 	s.NextQuestion()
 }
 
@@ -103,4 +132,19 @@ func (s *Session) Accuracy() float64 {
 // TotalAnswered returns the total number of questions answered (correct + incorrect).
 func (s *Session) TotalAnswered() int {
 	return s.Correct + s.Incorrect
+}
+
+// StreakTier returns the current streak tier.
+func (s *Session) StreakTier() StreakTier {
+	return GetStreakTier(s.Streak)
+}
+
+// Multiplier returns the current streak bonus multiplier.
+func (s *Session) Multiplier() float64 {
+	return StreakBonus(s.Streak)
+}
+
+// ClearLastResult clears the last result after UI has displayed it.
+func (s *Session) ClearLastResult() {
+	s.LastResult = nil
 }

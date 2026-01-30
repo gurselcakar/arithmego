@@ -73,24 +73,38 @@ func (m ResultsModel) View() string {
 	// Title
 	title := styles.Bold.Render("SESSION COMPLETE")
 
+	// Score (prominent)
+	score := components.RenderScore(m.session.Score)
+	scoreLabel := styles.Dim.Render("points")
+
+	// Separator
+	separator := styles.Dim.Render("────────────────────")
+
 	// Stats
-	correct := fmt.Sprintf("%d correct", m.session.Correct)
+	correct := fmt.Sprintf("%d/%d correct", m.session.Correct, m.session.TotalAnswered())
 	accuracy := fmt.Sprintf("%.0f%% accuracy", m.session.Accuracy())
+
+	// Best streak (only show if > 0)
+	var bestStreak string
+	if m.session.BestStreak > 0 {
+		bestStreak = fmt.Sprintf("Best streak: %d", m.session.BestStreak)
+	}
 
 	// Hints
 	hints := components.RenderHints([]string{"[Enter] Play again", "[M] Main menu"})
 
 	// Combine
-	content := lipgloss.JoinVertical(lipgloss.Center,
-		title,
-		"",
-		"",
-		correct,
-		accuracy,
-		"",
-		"",
-		hints,
-	)
+	var contentParts []string
+	contentParts = append(contentParts, title, "", "")
+	contentParts = append(contentParts, score, scoreLabel, "")
+	contentParts = append(contentParts, separator, "")
+	contentParts = append(contentParts, correct, accuracy)
+	if bestStreak != "" {
+		contentParts = append(contentParts, bestStreak)
+	}
+	contentParts = append(contentParts, "", "", hints)
+
+	content := lipgloss.JoinVertical(lipgloss.Center, contentParts...)
 
 	// Center in terminal
 	if m.width > 0 && m.height > 0 {
