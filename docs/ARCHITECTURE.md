@@ -264,6 +264,7 @@ Reusable UI elements in `internal/ui/components/`:
 | `input.go` | Numeric text input |
 | `keyhints.go` | Navigation hints |
 | `scoreboard.go` | Points/streak display (Phase 4) |
+| `selector.go` | Horizontal selector (◀ value ▶) |
 | `choices.go` | Multiple choice input (Phase 10) |
 
 ---

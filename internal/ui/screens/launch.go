@@ -1,7 +1,6 @@
 package screens
 
 import (
-	"fmt"
 	"strings"
 	"time"
 
@@ -211,37 +210,10 @@ func (m LaunchModel) View() string {
 
 // renderSelector renders a horizontal selector with arrows.
 func (m LaunchModel) renderSelector(label string, index int, options []string, focused bool) string {
-	leftArrow := "◀"
-	rightArrow := "▶"
-
-	if index == 0 {
-		leftArrow = " "
-	}
-	if index >= len(options)-1 {
-		rightArrow = " "
-	}
-
-	value := options[index]
-
-	// Format: Label: ◀ Value ▶
-	var row string
-	if focused {
-		row = fmt.Sprintf("%s: %s %s %s",
-			styles.Bold.Render(label),
-			styles.Accent.Render(leftArrow),
-			styles.Selected.Render(value),
-			styles.Accent.Render(rightArrow),
-		)
-	} else {
-		row = fmt.Sprintf("%s: %s %s %s",
-			styles.Subtle.Render(label),
-			styles.Subtle.Render(leftArrow),
-			styles.Unselected.Render(value),
-			styles.Subtle.Render(rightArrow),
-		)
-	}
-
-	return row
+	return components.RenderSelector(index, options, components.SelectorOptions{
+		Label:   label,
+		Focused: focused,
+	})
 }
 
 // SetSize updates the screen dimensions.

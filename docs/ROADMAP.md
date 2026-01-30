@@ -15,7 +15,7 @@ Development phases for ArithmeGo.
 | 4 | Scoring | Complete |
 | 5 | Statistics | Complete |
 | 6 | Quick Play | Complete |
-| 7 | Practice Mode | Planned |
+| 7 | Practice Mode | Complete |
 | 8 | Settings & Onboarding | Planned |
 | 9 | CLI Commands | Planned |
 | 10 | Polish | Planned |
@@ -114,6 +114,17 @@ Includes:
 ### Phase 7: Practice Mode
 
 Sandbox for drilling. No timer, no score. Live controls to change difficulty and operation.
+
+Includes:
+- Practice screen with clean, centered question display
+- Expandable settings panel (Tab to open/close)
+- All 12 operations across Basic, Power, and Advanced categories
+- Live difficulty adjustment (↑/↓ keys)
+- Quick operation switching (1-4 for basic ops, 0/M for mixed)
+- Per-category "Mixed" mode option
+- Input method toggle placeholder (ready for Phase 10 multiple choice)
+- Shared horizontal selector component extracted for reuse
+- Question stays visible when settings panel is open
 
 ### Phase 8: Settings & Onboarding
 
