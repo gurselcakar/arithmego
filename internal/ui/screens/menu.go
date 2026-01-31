@@ -172,7 +172,10 @@ func (m MenuModel) View() string {
 	menu := strings.Join(menuItems, "\n")
 
 	// Hints
-	hints := components.RenderHints([]string{"↑↓ Navigate", "Enter Select"})
+	hints := components.RenderHintsStructured([]components.Hint{
+		{Key: "↑↓", Action: "Navigate"},
+		{Key: "Enter", Action: "Select"},
+	})
 
 	// Update notification (if available)
 	var updateNotice string

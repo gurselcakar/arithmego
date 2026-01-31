@@ -258,7 +258,10 @@ func (m OnboardingModel) viewWelcome() string {
 	intro := "Welcome! Let's set up your first session."
 
 	progress := styles.Dim.Render(components.ProgressDots(1, totalSteps))
-	hints := components.RenderHints([]string{"Enter Continue", "S Skip"})
+	hints := components.RenderHintsStructured([]components.Hint{
+		{Key: "S", Action: "Skip"},
+		{Key: "Enter", Action: "Continue"},
+	})
 
 	return lipgloss.JoinVertical(lipgloss.Center,
 		logo,
@@ -291,7 +294,12 @@ func (m OnboardingModel) viewDuration() string {
 	optionsList := lipgloss.JoinVertical(lipgloss.Left, options...)
 
 	progress := styles.Dim.Render(components.ProgressDots(2, totalSteps))
-	hints := components.RenderHints([]string{"↑↓ Navigate", "Enter Continue", "S Skip", "B Back"})
+	hints := components.RenderHintsStructured([]components.Hint{
+		{Key: "B", Action: "Back"},
+		{Key: "↑↓", Action: "Navigate"},
+		{Key: "S", Action: "Skip"},
+		{Key: "Enter", Action: "Continue"},
+	})
 
 	return lipgloss.JoinVertical(lipgloss.Center,
 		title,
@@ -324,7 +332,12 @@ func (m OnboardingModel) viewDifficulty() string {
 	optionsList := lipgloss.JoinVertical(lipgloss.Left, options...)
 
 	progress := styles.Dim.Render(components.ProgressDots(3, totalSteps))
-	hints := components.RenderHints([]string{"↑↓ Navigate", "Enter Continue", "S Skip", "B Back"})
+	hints := components.RenderHintsStructured([]components.Hint{
+		{Key: "B", Action: "Back"},
+		{Key: "↑↓", Action: "Navigate"},
+		{Key: "S", Action: "Skip"},
+		{Key: "Enter", Action: "Continue"},
+	})
 
 	return lipgloss.JoinVertical(lipgloss.Center,
 		title,
@@ -357,7 +370,12 @@ func (m OnboardingModel) viewOperation() string {
 	optionsList := lipgloss.JoinVertical(lipgloss.Left, options...)
 
 	progress := styles.Dim.Render(components.ProgressDots(4, totalSteps))
-	hints := components.RenderHints([]string{"↑↓ Navigate", "Enter Continue", "S Skip", "B Back"})
+	hints := components.RenderHintsStructured([]components.Hint{
+		{Key: "B", Action: "Back"},
+		{Key: "↑↓", Action: "Navigate"},
+		{Key: "S", Action: "Skip"},
+		{Key: "Enter", Action: "Continue"},
+	})
 
 	return lipgloss.JoinVertical(lipgloss.Center,
 		title,
@@ -396,7 +414,12 @@ func (m OnboardingModel) viewInputMode() string {
 	optionsList := lipgloss.JoinVertical(lipgloss.Left, options...)
 
 	progress := styles.Dim.Render(components.ProgressDots(5, totalSteps))
-	hints := components.RenderHints([]string{"↑↓ Navigate", "Enter Start Game", "S Skip", "B Back"})
+	hints := components.RenderHintsStructured([]components.Hint{
+		{Key: "B", Action: "Back"},
+		{Key: "↑↓", Action: "Navigate"},
+		{Key: "S", Action: "Skip"},
+		{Key: "Enter", Action: "Start Game"},
+	})
 
 	return lipgloss.JoinVertical(lipgloss.Center,
 		title,

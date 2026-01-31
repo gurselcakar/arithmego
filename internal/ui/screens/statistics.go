@@ -141,7 +141,9 @@ func (m StatisticsModel) renderError() string {
 		"",
 		styles.Incorrect.Render("Error loading statistics"),
 		"",
-		components.RenderHints([]string{"Esc Back"}),
+		components.RenderHintsStructured([]components.Hint{
+			{Key: "Esc", Action: "Back"},
+		}),
 	)
 
 	if m.width > 0 && m.height > 0 {
@@ -169,7 +171,9 @@ func (m StatisticsModel) renderSummary() string {
 			styles.Dim.Render("Play a game to see your stats!"),
 			"",
 			"",
-			components.RenderHints([]string{"Esc Back"}),
+			components.RenderHintsStructured([]components.Hint{
+				{Key: "Esc", Action: "Back"},
+			}),
 		)
 	}
 
@@ -183,7 +187,10 @@ func (m StatisticsModel) renderSummary() string {
 	opGrid := m.renderOperationGrid()
 
 	// Hints
-	hints := components.RenderHints([]string{"[D] Details", "Esc Back"})
+	hints := components.RenderHintsStructured([]components.Hint{
+		{Key: "Esc", Action: "Back"},
+		{Key: "D", Action: "Details"},
+	})
 
 	return lipgloss.JoinVertical(lipgloss.Center,
 		title,
@@ -305,7 +312,10 @@ func (m StatisticsModel) renderDetailed() string {
 
 	// Hints
 	b.WriteString("\n")
-	b.WriteString(components.RenderHints([]string{"[S] Summary", "Esc Back"}))
+	b.WriteString(components.RenderHintsStructured([]components.Hint{
+		{Key: "Esc", Action: "Back"},
+		{Key: "S", Action: "Summary"},
+	}))
 
 	return b.String()
 }

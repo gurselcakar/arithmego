@@ -227,7 +227,11 @@ func (m SettingsModel) View() string {
 	})
 
 	// Hints
-	hints := components.RenderHints([]string{"↑↓ Navigate", "←→ Change", "Esc Back"})
+	hints := components.RenderHintsStructured([]components.Hint{
+		{Key: "Esc", Action: "Back"},
+		{Key: "↑↓", Action: "Navigate"},
+		{Key: "←→", Action: "Change"},
+	})
 
 	// Combine all elements
 	content := lipgloss.JoinVertical(lipgloss.Center,

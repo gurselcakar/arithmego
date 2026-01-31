@@ -78,7 +78,10 @@ func (m PauseModel) View() string {
 	timer := components.FormatTimer(m.session.TimeLeft)
 
 	// Hints
-	hints := components.RenderHints([]string{"[Enter] Resume", "[Q] Quit"})
+	hints := components.RenderHintsStructured([]components.Hint{
+		{Key: "Q", Action: "Quit"},
+		{Key: "Enter", Action: "Resume"},
+	})
 
 	// Combine
 	content := lipgloss.JoinVertical(lipgloss.Center,

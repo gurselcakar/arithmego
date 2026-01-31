@@ -537,9 +537,21 @@ func (m PracticeModel) viewClean() string {
 	separator := styles.Dim.Render(strings.Repeat("─", min(m.width-4, 78)))
 	var hints string
 	if m.inputMethod == components.InputMultipleChoice {
-		hints = components.RenderHints([]string{"Tab Settings", "↑↓ Difficulty", "[1-4] Select", "S Skip", "Q Quit"})
+		hints = components.RenderHintsStructured([]components.Hint{
+			{Key: "Q", Action: "Quit"},
+			{Key: "Tab", Action: "Settings"},
+			{Key: "↑↓", Action: "Difficulty"},
+			{Key: "1-4", Action: "Select"},
+			{Key: "S", Action: "Skip"},
+		})
 	} else {
-		hints = components.RenderHints([]string{"Tab Settings", "↑↓ Difficulty", "1-4 Operation", "S Skip", "Q Quit"})
+		hints = components.RenderHintsStructured([]components.Hint{
+			{Key: "Q", Action: "Quit"},
+			{Key: "Tab", Action: "Settings"},
+			{Key: "↑↓", Action: "Difficulty"},
+			{Key: "1-4", Action: "Operation"},
+			{Key: "S", Action: "Skip"},
+		})
 	}
 	bottomBar := lipgloss.JoinVertical(lipgloss.Center, separator, hints)
 
@@ -623,7 +635,13 @@ func (m PracticeModel) viewWithSettingsPanel() string {
 
 	// Bottom bar (different hints when settings open)
 	separator := styles.Dim.Render(strings.Repeat("─", min(m.width-4, 78)))
-	hints := components.RenderHints([]string{"Tab Next", "↑↓ Select", "←→ Adjust", "Enter Confirm", "Esc Close"})
+	hints := components.RenderHintsStructured([]components.Hint{
+		{Key: "Esc", Action: "Close"},
+		{Key: "Tab", Action: "Next"},
+		{Key: "↑↓", Action: "Select"},
+		{Key: "←→", Action: "Adjust"},
+		{Key: "Enter", Action: "Confirm"},
+	})
 	bottomBar := lipgloss.JoinVertical(lipgloss.Center, separator, hints)
 
 	// Layout

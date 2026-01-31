@@ -72,19 +72,17 @@ func NewGame(session *game.Session, inputMethod components.InputMethod) GameMode
 	}
 }
 
+// gameStartMsg is sent to trigger initial setup that requires model mutation.
+type gameStartMsg struct{}
+
 // Init initializes the game and starts the timer.
 func (m GameModel) Init() tea.Cmd {
 	m.session.Start()
 
-	// Generate choices if in multiple choice mode
-	if m.inputMethod == components.InputMultipleChoice && m.session.Current != nil {
-		choices, correctIndex := game.GenerateChoices(m.session.Current.Answer, m.session.Difficulty)
-		m.choices.SetChoices(choices, correctIndex)
-	}
-
 	return tea.Batch(
 		m.input.Init(),
 		TickCmd(),
+		func() tea.Msg { return gameStartMsg{} }, // Trigger choice generation in Update
 	)
 }
 
@@ -126,6 +124,14 @@ type QuitConfirmMsg struct {
 // Update handles game input and timer ticks.
 func (m GameModel) Update(msg tea.Msg) (GameModel, tea.Cmd) {
 	switch msg := msg.(type) {
+	case gameStartMsg:
+		// Generate initial choices for multiple choice mode
+		if m.inputMethod == components.InputMultipleChoice && m.session.Current != nil {
+			choices, correctIndex := game.GenerateChoices(m.session.Current.Answer, m.session.Difficulty)
+			m.choices.SetChoices(choices, correctIndex)
+		}
+		return m, nil
+
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
@@ -361,9 +367,18 @@ func (m GameModel) View() string {
 	// Hints - differ based on input method
 	var hints string
 	if m.inputMethod == components.InputMultipleChoice {
-		hints = components.RenderHints([]string{"[1-4] Select", "[S] Skip", "[P] Pause", "[Q] Quit"})
+		hints = components.RenderHintsStructured([]components.Hint{
+			{Key: "1-4", Action: "Select"},
+			{Key: "S", Action: "Skip"},
+			{Key: "P", Action: "Pause"},
+			{Key: "Q", Action: "Quit"},
+		})
 	} else {
-		hints = components.RenderHints([]string{"[S] Skip", "[P] Pause", "[Q] Quit"})
+		hints = components.RenderHintsStructured([]components.Hint{
+			{Key: "S", Action: "Skip"},
+			{Key: "P", Action: "Pause"},
+			{Key: "Q", Action: "Quit"},
+		})
 	}
 
 	// Center content (milestone is now shown above score in top row)

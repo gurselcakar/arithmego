@@ -88,7 +88,10 @@ func (m ResultsModel) View() string {
 	}
 
 	// Hints
-	hints := components.RenderHints([]string{"[Enter] Play again", "[M] Main menu"})
+	hints := components.RenderHintsStructured([]components.Hint{
+		{Key: "M", Action: "Menu"},
+		{Key: "Enter", Action: "Play Again"},
+	})
 
 	// Save error warning (if any)
 	var saveWarning string

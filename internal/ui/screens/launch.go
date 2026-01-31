@@ -225,7 +225,12 @@ func (m LaunchModel) View() string {
 	startButton := startStyle.Render(startText)
 
 	// Hints
-	hints := components.RenderHints([]string{"↑↓ Navigate", "←→ Adjust", "Enter Confirm", "Esc Back"})
+	hints := components.RenderHintsStructured([]components.Hint{
+		{Key: "Esc", Action: "Back"},
+		{Key: "↑↓", Action: "Navigate"},
+		{Key: "←→", Action: "Adjust"},
+		{Key: "Enter", Action: "Confirm"},
+	})
 
 	// Combine all elements
 	content := lipgloss.JoinVertical(lipgloss.Center,

@@ -111,7 +111,11 @@ func (m ModesModel) View() string {
 	}
 
 	// Hints
-	hints := components.RenderHints([]string{"↑↓ Navigate", "Enter Select", "Esc Back"})
+	hints := components.RenderHintsStructured([]components.Hint{
+		{Key: "Esc", Action: "Back"},
+		{Key: "↑↓", Action: "Navigate"},
+		{Key: "Enter", Action: "Select"},
+	})
 
 	// Combine all elements
 	content := lipgloss.JoinVertical(lipgloss.Center,

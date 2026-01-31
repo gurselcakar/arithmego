@@ -283,6 +283,7 @@ func (a *App) updateGame(msg tea.Msg) (tea.Model, tea.Cmd) {
 		a.session = qm.Session
 		// Check if user has disabled quit confirmation
 		if a.config != nil && a.config.SkipQuitConfirmation {
+			a.rebuildMenu()
 			a.screen = ScreenMenu
 			a.session = nil
 			return a, nil
@@ -315,6 +316,7 @@ func (a *App) updatePause(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	// Check for quit to menu (direct quit, skipping confirmation)
 	if _, ok := msg.(screens.QuitToMenuMsg); ok {
+		a.rebuildMenu()
 		a.screen = ScreenMenu
 		a.session = nil
 		return a, nil
@@ -325,6 +327,7 @@ func (a *App) updatePause(msg tea.Msg) (tea.Model, tea.Cmd) {
 		a.session = qm.Session
 		// Check if user has disabled quit confirmation
 		if a.config != nil && a.config.SkipQuitConfirmation {
+			a.rebuildMenu()
 			a.screen = ScreenMenu
 			a.session = nil
 			return a, nil
@@ -494,6 +497,7 @@ func (a *App) updateQuitConfirm(msg tea.Msg) (tea.Model, tea.Cmd) {
 			a.config.SkipQuitConfirmation = true
 			_ = storage.SaveConfig(a.config)
 		}
+		a.rebuildMenu()
 		a.screen = ScreenMenu
 		a.session = nil
 		return a, nil
