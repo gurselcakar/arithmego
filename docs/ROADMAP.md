@@ -19,7 +19,7 @@ Development phases for ArithmeGo.
 | 8 | Settings | Complete |
 | 9 | Onboarding | Complete |
 | 10 | CLI Commands | Complete |
-| 11 | Polish | Planned |
+| 11 | Polish | In Progress |
 | 12 | Distribution | Planned |
 
 Each phase builds on the previous. Each delivers something testable.
@@ -167,7 +167,15 @@ Includes:
 
 ### Phase 11: Polish
 
-Edge cases, pause/quit flow, multiple choice input, error handling, terminal resize.
+Quit confirmation flow, multiple choice input, edge case handling.
+
+Includes:
+- Multiple choice input mode (1-4 selection, configurable in settings/onboarding)
+- Quit confirmation screen when pressing Q during gameplay or from pause
+- "Don't ask again" checkbox that persists preference to settings
+- Skip quit confirmation toggle in Settings under Preferences
+- Proper timer handling (stops on confirm, resumes on cancel back to game)
+- [Q] Quit hint visible on game screen
 
 ### Phase 12: Distribution
 

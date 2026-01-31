@@ -47,18 +47,24 @@ User preferences and Quick Play state:
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| `default_difficulty` | string | `"Medium"` | Default difficulty for new games |
+| `onboarded` | bool | `false` | Whether user completed onboarding |
+| `default_difficulty` | string | `"Easy"` | Default difficulty for new games |
 | `default_duration_ms` | int | `60000` | Default duration in milliseconds |
 | `auto_update` | bool | `true` | Check for updates on launch |
+| `input_method` | string | `"typing"` | Input mode: "typing" or "multiple_choice" |
+| `skip_quit_confirmation` | bool | `false` | Skip quit confirmation dialog |
 | `last_played_mode_id` | string | - | Quick Play: last mode ID |
 | `last_played_difficulty` | string | - | Quick Play: last difficulty |
 | `last_played_duration_ms` | int | - | Quick Play: last duration |
 
 ```json
 {
-  "default_difficulty": "Medium",
+  "onboarded": true,
+  "default_difficulty": "Easy",
   "default_duration_ms": 60000,
   "auto_update": true,
+  "input_method": "typing",
+  "skip_quit_confirmation": false,
   "last_played_mode_id": "addition",
   "last_played_difficulty": "Hard",
   "last_played_duration_ms": 120000
@@ -125,7 +131,8 @@ arithmego/
 │   │   │   ├── practice.go
 │   │   │   ├── statistics.go
 │   │   │   ├── settings.go
-│   │   │   └── onboarding.go
+│   │   │   ├── onboarding.go
+│   │   │   └── quitconfirm.go
 │   │   ├── components/
 │   │   │   ├── logo.go
 │   │   │   ├── timer.go
@@ -275,7 +282,10 @@ Screen transitions are handled via typed messages:
 | `GameOverMsg` | Timer expired |
 | `PauseMsg` | User pressed P/Esc |
 | `ResumeMsg` | User pressed Enter on pause |
-| `QuitToMenuMsg` | User quit from pause |
+| `QuitToMenuMsg` | User quit from pause (skip confirm) |
+| `QuitConfirmMsg` | User pressed Q during game/pause |
+| `QuitConfirmCancelMsg` | User cancelled quit confirmation |
+| `QuitConfirmAcceptMsg` | User confirmed quit |
 | `PlayAgainMsg` | User pressed Enter on results |
 | `ReturnToMenuMsg` | User pressed M/Esc on results |
 
