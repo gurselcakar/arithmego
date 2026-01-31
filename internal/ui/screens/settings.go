@@ -21,9 +21,10 @@ const (
 	SettingsFieldDuration
 	SettingsFieldInputMethod
 	SettingsFieldAutoUpdate
+	SettingsFieldSkipQuitConfirm
 )
 
-const settingsFieldCount = 4
+const settingsFieldCount = 5
 
 // SettingsModel represents the settings screen.
 type SettingsModel struct {
@@ -87,6 +88,8 @@ func (m SettingsModel) Update(msg tea.Msg) (SettingsModel, tea.Cmd) {
 		case "enter", " ":
 			if m.focusedField == SettingsFieldAutoUpdate {
 				m.toggleAutoUpdate()
+			} else if m.focusedField == SettingsFieldSkipQuitConfirm {
+				m.toggleSkipQuitConfirm()
 			}
 		case "esc":
 			return m, func() tea.Msg {
@@ -144,6 +147,9 @@ func (m *SettingsModel) adjustValue(delta int) {
 
 	case SettingsFieldAutoUpdate:
 		m.toggleAutoUpdate()
+
+	case SettingsFieldSkipQuitConfirm:
+		m.toggleSkipQuitConfirm()
 	}
 }
 
@@ -162,6 +168,12 @@ func (m *SettingsModel) toggleInputMethod() {
 // toggleAutoUpdate toggles the auto-update preference.
 func (m *SettingsModel) toggleAutoUpdate() {
 	m.config.AutoUpdate = !m.config.AutoUpdate
+	m.saveConfig()
+}
+
+// toggleSkipQuitConfirm toggles the skip quit confirmation preference.
+func (m *SettingsModel) toggleSkipQuitConfirm() {
+	m.config.SkipQuitConfirmation = !m.config.SkipQuitConfirmation
 	m.saveConfig()
 }
 
@@ -209,6 +221,11 @@ func (m SettingsModel) View() string {
 		Focused: m.focusedField == SettingsFieldAutoUpdate,
 	})
 
+	skipQuitConfirmRow := components.RenderToggle(m.config.SkipQuitConfirmation, components.ToggleOptions{
+		Label:   "Skip quit confirm",
+		Focused: m.focusedField == SettingsFieldSkipQuitConfirm,
+	})
+
 	// Hints
 	hints := components.RenderHints([]string{"↑↓ Navigate", "←→ Change", "Esc Back"})
 
@@ -231,6 +248,8 @@ func (m SettingsModel) View() string {
 		preferencesHeader,
 		"",
 		autoUpdateRow,
+		"",
+		skipQuitConfirmRow,
 		"",
 		"",
 		hints,

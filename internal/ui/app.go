@@ -20,16 +20,17 @@ type App struct {
 	height int
 
 	// Screen models
-	menuModel       screens.MenuModel
-	gameModel       screens.GameModel
-	pauseModel      screens.PauseModel
-	resultsModel    screens.ResultsModel
-	modesModel      screens.ModesModel
-	launchModel     screens.LaunchModel
-	practiceModel   screens.PracticeModel
-	statisticsModel screens.StatisticsModel
-	settingsModel   screens.SettingsModel
-	onboardingModel screens.OnboardingModel
+	menuModel        screens.MenuModel
+	gameModel        screens.GameModel
+	pauseModel       screens.PauseModel
+	resultsModel     screens.ResultsModel
+	modesModel       screens.ModesModel
+	launchModel      screens.LaunchModel
+	practiceModel    screens.PracticeModel
+	statisticsModel  screens.StatisticsModel
+	settingsModel    screens.SettingsModel
+	onboardingModel  screens.OnboardingModel
+	quitConfirmModel screens.QuitConfirmModel
 
 	// Current session state
 	session         *game.Session
@@ -202,6 +203,8 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return a.updateSettings(msg)
 	case ScreenOnboarding:
 		return a.updateOnboarding(msg)
+	case ScreenQuitConfirm:
+		return a.updateQuitConfirm(msg)
 	}
 
 	return a, nil
@@ -269,10 +272,26 @@ func (a *App) updateGame(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Check for pause
 	if pm, ok := msg.(screens.PauseMsg); ok {
 		a.session = pm.Session
-		a.pauseModel = screens.NewPause(a.session)
+		a.pauseModel = screens.NewPause(a.session, a.config)
 		a.pauseModel.SetSize(a.width, a.height)
 		a.screen = ScreenPause
 		return a, a.pauseModel.Init()
+	}
+
+	// Check for quit confirmation from game
+	if qm, ok := msg.(screens.QuitConfirmMsg); ok {
+		a.session = qm.Session
+		// Check if user has disabled quit confirmation
+		if a.config != nil && a.config.SkipQuitConfirmation {
+			a.screen = ScreenMenu
+			a.session = nil
+			return a, nil
+		}
+		// Show quit confirmation screen
+		a.quitConfirmModel = screens.NewQuitConfirm(a.session, a.config, screens.QuitFromGame)
+		a.quitConfirmModel.SetSize(a.width, a.height)
+		a.screen = ScreenQuitConfirm
+		return a, a.quitConfirmModel.Init()
 	}
 
 	return a, cmd
@@ -294,11 +313,27 @@ func (a *App) updatePause(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return a, screens.TickCmd()
 	}
 
-	// Check for quit to menu
+	// Check for quit to menu (direct quit, skipping confirmation)
 	if _, ok := msg.(screens.QuitToMenuMsg); ok {
 		a.screen = ScreenMenu
 		a.session = nil
 		return a, nil
+	}
+
+	// Check for quit confirmation from pause
+	if qm, ok := msg.(screens.QuitConfirmMsg); ok {
+		a.session = qm.Session
+		// Check if user has disabled quit confirmation
+		if a.config != nil && a.config.SkipQuitConfirmation {
+			a.screen = ScreenMenu
+			a.session = nil
+			return a, nil
+		}
+		// Show quit confirmation screen
+		a.quitConfirmModel = screens.NewQuitConfirm(a.session, a.config, screens.QuitFromPause)
+		a.quitConfirmModel.SetSize(a.width, a.height)
+		a.screen = ScreenQuitConfirm
+		return a, a.quitConfirmModel.Init()
 	}
 
 	return a, cmd
@@ -427,6 +462,41 @@ func (a *App) updateOnboarding(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Handle onboarding skip - use defaults (Easy, 60s, Addition, Typing)
 	if _, ok := msg.(screens.OnboardingSkipMsg); ok {
 		return a.completeOnboarding(modes.IDAdditionSprint, "Easy", 60000, "typing")
+	}
+
+	return a, cmd
+}
+
+// updateQuitConfirm handles quit confirmation screen updates.
+func (a *App) updateQuitConfirm(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
+	a.quitConfirmModel, cmd = a.quitConfirmModel.Update(msg)
+
+	// Handle cancel - return to previous screen
+	if cancelMsg, ok := msg.(screens.QuitConfirmCancelMsg); ok {
+		a.session = cancelMsg.Session
+		if cancelMsg.Source == screens.QuitFromGame {
+			// Return to game and resume timer
+			a.gameModel.SetSession(a.session)
+			a.screen = ScreenGame
+			a.session.Resume()
+			return a, screens.TickCmd()
+		}
+		// Return to pause screen (timer already stopped)
+		a.pauseModel.SetSession(a.session)
+		a.screen = ScreenPause
+		return a, nil
+	}
+
+	// Handle accept - save preference if checked and go to menu
+	if acceptMsg, ok := msg.(screens.QuitConfirmAcceptMsg); ok {
+		if acceptMsg.DontAskAgain && a.config != nil {
+			a.config.SkipQuitConfirmation = true
+			_ = storage.SaveConfig(a.config)
+		}
+		a.screen = ScreenMenu
+		a.session = nil
+		return a, nil
 	}
 
 	return a, cmd
@@ -567,6 +637,8 @@ func (a *App) View() string {
 		return a.settingsModel.View()
 	case ScreenOnboarding:
 		return a.onboardingModel.View()
+	case ScreenQuitConfirm:
+		return a.quitConfirmModel.View()
 	default:
 		return ""
 	}

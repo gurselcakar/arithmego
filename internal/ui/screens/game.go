@@ -118,6 +118,11 @@ type PauseMsg struct {
 	Session *game.Session
 }
 
+// QuitConfirmMsg is sent when the user wants to quit from the game.
+type QuitConfirmMsg struct {
+	Session *game.Session
+}
+
 // Update handles game input and timer ticks.
 func (m GameModel) Update(msg tea.Msg) (GameModel, tea.Cmd) {
 	switch msg := msg.(type) {
@@ -206,6 +211,10 @@ func (m GameModel) Update(msg tea.Msg) (GameModel, tea.Cmd) {
 		case "p", "esc":
 			return m, func() tea.Msg {
 				return PauseMsg{Session: m.session}
+			}
+		case "q":
+			return m, func() tea.Msg {
+				return QuitConfirmMsg{Session: m.session}
 			}
 		default:
 			// Route to appropriate input component
@@ -352,9 +361,9 @@ func (m GameModel) View() string {
 	// Hints - differ based on input method
 	var hints string
 	if m.inputMethod == components.InputMultipleChoice {
-		hints = components.RenderHints([]string{"[1-4] Select", "[S] Skip", "[P] Pause"})
+		hints = components.RenderHints([]string{"[1-4] Select", "[S] Skip", "[P] Pause", "[Q] Quit"})
 	} else {
-		hints = components.RenderHints([]string{"[S] Skip", "[P] Pause"})
+		hints = components.RenderHints([]string{"[S] Skip", "[P] Pause", "[Q] Quit"})
 	}
 
 	// Center content (milestone is now shown above score in top row)

@@ -12,8 +12,9 @@ const (
 	ScreenResults
 	ScreenPractice   // Phase 7
 	ScreenStatistics // Phase 5
-	ScreenSettings   // Phase 8
-	ScreenOnboarding // Phase 9
+	ScreenSettings     // Phase 8
+	ScreenOnboarding   // Phase 9
+	ScreenQuitConfirm  // Phase 11
 )
 
 // StartMode determines how the app should start (used by CLI commands).

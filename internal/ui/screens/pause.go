@@ -7,6 +7,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 
 	"github.com/gurselcakar/arithmego/internal/game"
+	"github.com/gurselcakar/arithmego/internal/storage"
 	"github.com/gurselcakar/arithmego/internal/ui/components"
 	"github.com/gurselcakar/arithmego/internal/ui/styles"
 )
@@ -16,14 +17,16 @@ import (
 // PauseModel represents the pause screen.
 type PauseModel struct {
 	session *game.Session
+	config  *storage.Config
 	width   int
 	height  int
 }
 
 // NewPause creates a new pause model.
-func NewPause(session *game.Session) PauseModel {
+func NewPause(session *game.Session, config *storage.Config) PauseModel {
 	return PauseModel{
 		session: session,
+		config:  config,
 	}
 }
 
@@ -56,7 +59,7 @@ func (m PauseModel) Update(msg tea.Msg) (PauseModel, tea.Cmd) {
 			}
 		case "q":
 			return m, func() tea.Msg {
-				return QuitToMenuMsg{}
+				return QuitConfirmMsg{Session: m.session}
 			}
 		}
 	}
