@@ -151,6 +151,7 @@ func (m MenuModel) View() string {
 
 	// Logo
 	logo := components.Logo()
+	separator := styles.Dim.Render(components.LogoSeparator())
 	tagline := components.Tagline()
 
 	// Menu items
@@ -188,6 +189,8 @@ func (m MenuModel) View() string {
 	// Build main content (without hints)
 	mainContent := lipgloss.JoinVertical(lipgloss.Center,
 		logo,
+		"",
+		separator,
 		"",
 		tagline,
 		"",

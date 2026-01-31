@@ -16,6 +16,11 @@ func Logo() string {
 ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝   ╚═╝   ╚═╝  ╚═╝╚═╝     ╚═╝╚══════╝ ╚═════╝  ╚═════╝ `
 }
 
+// LogoSeparator returns the three dots separator shown below the logo.
+func LogoSeparator() string {
+	return "•  •  •"
+}
+
 // LogoCompact returns a smaller text-based logo for narrow terminals.
 // Use this when terminal width is less than LogoMinWidth.
 func LogoCompact() string {

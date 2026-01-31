@@ -247,6 +247,7 @@ func (m OnboardingModel) View() string {
 // viewWelcome renders the welcome step.
 func (m OnboardingModel) viewWelcome() string {
 	logo := components.LogoForWidth(m.width)
+	separator := styles.Dim.Render(components.LogoSeparator())
 	tagline := components.Tagline()
 
 	intro := "Welcome! Let's set up your first session."
@@ -255,6 +256,9 @@ func (m OnboardingModel) viewWelcome() string {
 
 	mainContent := lipgloss.JoinVertical(lipgloss.Center,
 		logo,
+		"",
+		separator,
+		"",
 		tagline,
 		"",
 		"",
