@@ -190,70 +190,94 @@ func (m SettingsModel) View() string {
 	// Title
 	title := styles.Bold.Render("SETTINGS")
 
-	separator := styles.Dim.Render(strings.Repeat("─", 30))
-
-	// Defaults section
-	defaultsHeader := styles.Bold.Render("DEFAULTS")
-
+	// Gather all data
 	diffs := game.AllDifficulties()
 	durs := modes.AllowedDurations
+	inputOptions := []string{"Typing", "Multiple Choice"}
+
+	// All labels used in settings
+	labels := []string{"Difficulty", "Duration", "Input", "Auto-update", "Skip quit confirm"}
+
+	// All possible values across all selectors
+	allValues := []string{}
+	allValues = append(allValues, settingsDifficultyNames(diffs)...)
+	allValues = append(allValues, settingsDurationNames(durs)...)
+	allValues = append(allValues, inputOptions...)
+
+	// Calculate widths dynamically
+	labelWidth := maxLen(labels)
+	valueWidth := maxLen(allValues)
+
+	// Separator width: label + 2 spaces + arrow + space + value + space + arrow
+	separatorWidth := labelWidth + 2 + 1 + 1 + valueWidth + 1 + 1
+	separator := styles.Dim.Render(strings.Repeat("─", separatorWidth))
 
 	difficultyRow := components.RenderSelector(m.difficultyIndex, settingsDifficultyNames(diffs), components.SelectorOptions{
-		Label:   "Difficulty",
-		Focused: m.focusedField == SettingsFieldDifficulty,
+		Label:      "Difficulty",
+		LabelWidth: labelWidth,
+		ValueWidth: valueWidth,
+		Focused:    m.focusedField == SettingsFieldDifficulty,
 	})
 
 	durationRow := components.RenderSelector(m.durationIndex, settingsDurationNames(durs), components.SelectorOptions{
-		Label:   "Duration",
-		Focused: m.focusedField == SettingsFieldDuration,
+		Label:      "Duration",
+		LabelWidth: labelWidth,
+		ValueWidth: valueWidth,
+		Focused:    m.focusedField == SettingsFieldDuration,
 	})
 
-	inputMethodRow := components.RenderSelector(m.inputMethodIndex, []string{"Typing", "Multiple Choice"}, components.SelectorOptions{
-		Label:   "Input",
-		Focused: m.focusedField == SettingsFieldInputMethod,
+	inputMethodRow := components.RenderSelector(m.inputMethodIndex, inputOptions, components.SelectorOptions{
+		Label:      "Input",
+		LabelWidth: labelWidth,
+		ValueWidth: valueWidth,
+		Focused:    m.focusedField == SettingsFieldInputMethod,
 	})
-
-	// Preferences section
-	preferencesHeader := styles.Bold.Render("PREFERENCES")
 
 	autoUpdateRow := components.RenderToggle(m.config.AutoUpdate, components.ToggleOptions{
-		Label:   "Auto-update",
-		Focused: m.focusedField == SettingsFieldAutoUpdate,
+		Label:      "Auto-update",
+		LabelWidth: labelWidth,
+		Focused:    m.focusedField == SettingsFieldAutoUpdate,
 	})
 
 	skipQuitConfirmRow := components.RenderToggle(m.config.SkipQuitConfirmation, components.ToggleOptions{
-		Label:   "Skip quit confirm",
-		Focused: m.focusedField == SettingsFieldSkipQuitConfirm,
+		Label:      "Skip quit confirm",
+		LabelWidth: labelWidth,
+		Focused:    m.focusedField == SettingsFieldSkipQuitConfirm,
 	})
 
-	// Hints
-	hints := components.RenderHintsStructured([]components.Hint{
-		{Key: "Esc", Action: "Back"},
-		{Key: "↑↓", Action: "Navigate"},
-		{Key: "←→", Action: "Change"},
-	})
+	// Context-aware hints
+	var hints string
+	if m.focusedField == SettingsFieldAutoUpdate || m.focusedField == SettingsFieldSkipQuitConfirm {
+		// Toggle hints
+		hints = components.RenderHintsStructured([]components.Hint{
+			{Key: "↑↓", Action: "Navigate"},
+			{Key: "Space", Action: "Toggle"},
+			{Key: "Esc", Action: "Back"},
+		})
+	} else {
+		// Selector hints
+		hints = components.RenderHintsStructured([]components.Hint{
+			{Key: "↑↓", Action: "Navigate"},
+			{Key: "←→", Action: "Change"},
+			{Key: "Esc", Action: "Back"},
+		})
+	}
 
-	// Build main content (without hints)
+	// Build settings block (left-aligned rows)
+	settingsBlock := lipgloss.JoinVertical(lipgloss.Left,
+		difficultyRow,
+		durationRow,
+		inputMethodRow,
+		separator,
+		autoUpdateRow,
+		skipQuitConfirmRow,
+	)
+
+	// Build main content with centered title and settings block
 	mainContent := lipgloss.JoinVertical(lipgloss.Center,
 		title,
 		"",
-		separator,
-		"",
-		defaultsHeader,
-		"",
-		difficultyRow,
-		"",
-		durationRow,
-		"",
-		inputMethodRow,
-		"",
-		separator,
-		"",
-		preferencesHeader,
-		"",
-		autoUpdateRow,
-		"",
-		skipQuitConfirmRow,
+		settingsBlock,
 	)
 
 	// Bottom-anchored hints layout with small gap at bottom
@@ -285,7 +309,18 @@ func (m *SettingsModel) Config() *storage.Config {
 	return m.config
 }
 
-// Helper functions
+// Helper functions (shared across screens package)
+
+// maxLen returns the length of the longest string in the slice.
+func maxLen(items []string) int {
+	max := 0
+	for _, s := range items {
+		if len(s) > max {
+			max = len(s)
+		}
+	}
+	return max
+}
 
 func findDifficultyIndex(name string) int {
 	diffs := game.AllDifficulties()

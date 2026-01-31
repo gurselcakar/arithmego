@@ -8,18 +8,17 @@ import (
 
 // SelectorOptions configures the horizontal selector rendering.
 type SelectorOptions struct {
-	Label   string // Optional label (e.g., "Difficulty")
-	Prefix  string // Prefix before arrows (e.g., "  " for indentation)
-	Focused bool   // Whether the selector is focused
+	Label      string // Optional label (e.g., "Difficulty")
+	LabelWidth int    // Width for label alignment (0 = no padding)
+	ValueWidth int    // Width for value alignment (0 = no padding)
+	Prefix     string // Prefix before arrows (e.g., "  " for indentation)
+	Focused    bool   // Whether the selector is focused
 }
 
 // RenderSelector renders a horizontal selector with arrows: ◀ value ▶
-// When Label is provided: "Label: ◀ Value ▶"
+// Arrows are always visible but dimmed at boundaries to indicate navigation limits.
+// When Label is provided: "Label  ◀ Value ▶"
 // When only Prefix is provided: "  ◀ Value ▶"
-//
-// Returns a placeholder string if options is empty or index is out of bounds.
-// This graceful degradation prevents crashes in edge cases while making the
-// issue visible during development.
 func RenderSelector(index int, options []string, opts SelectorOptions) string {
 	if len(options) == 0 {
 		return styles.Dim.Render("[no options]")
@@ -33,33 +32,59 @@ func RenderSelector(index int, options []string, opts SelectorOptions) string {
 		}
 	}
 
-	leftArrow := "◀"
-	rightArrow := "▶"
-
-	if index == 0 {
-		leftArrow = " "
-	}
-	if index >= len(options)-1 {
-		rightArrow = " "
-	}
+	// Track if arrows are active (can navigate in that direction)
+	leftActive := index > 0
+	rightActive := index < len(options)-1
 
 	value := options[index]
 
+	// Helper to render arrow with appropriate style
+	renderArrow := func(arrow string, active bool, focused bool) string {
+		if focused {
+			if active {
+				return styles.Accent.Render(arrow)
+			}
+			return styles.Dim.Render(arrow)
+		}
+		if active {
+			return styles.Subtle.Render(arrow)
+		}
+		return styles.Dim.Render(arrow)
+	}
+
 	if opts.Label != "" {
-		// Format: Label: ◀ Value ▶
+		label := opts.Label
+		if opts.LabelWidth > 0 {
+			label = fmt.Sprintf("%-*s", opts.LabelWidth, opts.Label)
+		}
+
+		// Calculate padding to add after the selector for fixed total width
+		// Format: ◀ Value ▶ then padding to reach ValueWidth
+		padding := ""
+		if opts.ValueWidth > 0 {
+			// We want the value area to be ValueWidth, so pad after ▶
+			padLen := opts.ValueWidth - len(value)
+			if padLen > 0 {
+				padding = fmt.Sprintf("%*s", padLen, "")
+			}
+		}
+
+		// Format: Label  ◀ Value ▶[padding] (arrows hug the value)
 		if opts.Focused {
-			return fmt.Sprintf("%s: %s %s %s",
-				styles.Bold.Render(opts.Label),
-				styles.Accent.Render(leftArrow),
+			return fmt.Sprintf("%s  %s %s %s%s",
+				styles.Bold.Render(label),
+				renderArrow("◀", leftActive, true),
 				styles.Selected.Render(value),
-				styles.Accent.Render(rightArrow),
+				renderArrow("▶", rightActive, true),
+				padding,
 			)
 		}
-		return fmt.Sprintf("%s: %s %s %s",
-			styles.Subtle.Render(opts.Label),
-			styles.Subtle.Render(leftArrow),
+		return fmt.Sprintf("%s  %s %s %s%s",
+			styles.Subtle.Render(label),
+			renderArrow("◀", leftActive, false),
 			styles.Unselected.Render(value),
-			styles.Subtle.Render(rightArrow),
+			renderArrow("▶", rightActive, false),
+			padding,
 		)
 	}
 
@@ -67,15 +92,15 @@ func RenderSelector(index int, options []string, opts SelectorOptions) string {
 	if opts.Focused {
 		return fmt.Sprintf("%s%s %s %s",
 			opts.Prefix,
-			styles.Accent.Render(leftArrow),
+			renderArrow("◀", leftActive, true),
 			styles.Selected.Render(value),
-			styles.Accent.Render(rightArrow),
+			renderArrow("▶", rightActive, true),
 		)
 	}
 	return fmt.Sprintf("%s%s %s %s",
 		opts.Prefix,
-		styles.Dim.Render(leftArrow),
+		renderArrow("◀", leftActive, false),
 		styles.Unselected.Render(value),
-		styles.Dim.Render(rightArrow),
+		renderArrow("▶", rightActive, false),
 	)
 }

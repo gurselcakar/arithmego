@@ -196,10 +196,12 @@ func (m StatisticsModel) renderSummary() string {
 	sessions := fmt.Sprintf("%d sessions", agg.TotalSessions)
 	accuracy := fmt.Sprintf("%.0f%% accuracy", agg.OverallAccuracy)
 
-	separator := styles.Dim.Render(strings.Repeat("─", 25))
-
 	// Per-operation accuracy (basic 4 operations)
 	opGrid := m.renderOperationGrid()
+
+	// Separator width based on content
+	separatorWidth := maxLen([]string{sessions, accuracy, opGrid})
+	separator := styles.Dim.Render(strings.Repeat("─", separatorWidth))
 
 	// Main content (without hints)
 	mainContent := lipgloss.JoinVertical(lipgloss.Center,
@@ -254,8 +256,11 @@ func (m StatisticsModel) renderOperationGrid() string {
 	mul := formatOp("×", "Multiplication")
 	div := formatOp("÷", "Division")
 
-	row1 := fmt.Sprintf("%-12s  %-12s", add, sub)
-	row2 := fmt.Sprintf("%-12s  %-12s", mul, div)
+	// Calculate column width from actual content
+	colWidth := maxLen([]string{add, sub, mul, div})
+
+	row1 := fmt.Sprintf("%-*s  %-*s", colWidth, add, colWidth, sub)
+	row2 := fmt.Sprintf("%-*s  %-*s", colWidth, mul, colWidth, div)
 
 	return lipgloss.JoinVertical(lipgloss.Center, row1, row2)
 }
@@ -271,17 +276,32 @@ func (m StatisticsModel) renderDetailed() string {
 	b.WriteString(title)
 	b.WriteString("\n\n\n")
 
+	// Overview labels for dynamic width calculation
+	overviewLabels := []string{
+		"Total Sessions",
+		"Total Questions",
+		"Overall Accuracy",
+		"Best Streak",
+		"Avg Response Time",
+	}
+	overviewLabelWidth := maxLen(overviewLabels)
+
+	// Calculate separator width (label + spacing + reasonable value width)
+	separatorWidth := overviewLabelWidth + 10
+
+	separator := styles.Dim.Render(strings.Repeat("─", separatorWidth))
+
 	// Overview section
 	b.WriteString(styles.Bold.Render("OVERVIEW"))
 	b.WriteString("\n")
-	b.WriteString(styles.Dim.Render(strings.Repeat("─", 30)))
+	b.WriteString(separator)
 	b.WriteString("\n")
-	b.WriteString(fmt.Sprintf("Total Sessions         %d\n", agg.TotalSessions))
-	b.WriteString(fmt.Sprintf("Total Questions        %d\n", agg.TotalQuestions))
-	b.WriteString(fmt.Sprintf("Overall Accuracy       %.0f%%\n", agg.OverallAccuracy))
-	b.WriteString(fmt.Sprintf("Best Streak            %d\n", agg.BestStreakEver))
+	b.WriteString(fmt.Sprintf("%-*s  %d\n", overviewLabelWidth, "Total Sessions", agg.TotalSessions))
+	b.WriteString(fmt.Sprintf("%-*s  %d\n", overviewLabelWidth, "Total Questions", agg.TotalQuestions))
+	b.WriteString(fmt.Sprintf("%-*s  %.0f%%\n", overviewLabelWidth, "Overall Accuracy", agg.OverallAccuracy))
+	b.WriteString(fmt.Sprintf("%-*s  %d\n", overviewLabelWidth, "Best Streak", agg.BestStreakEver))
 	if agg.AvgResponseTimeMs > 0 {
-		b.WriteString(fmt.Sprintf("Avg Response Time      %.1fs\n", float64(agg.AvgResponseTimeMs)/1000))
+		b.WriteString(fmt.Sprintf("%-*s  %.1fs\n", overviewLabelWidth, "Avg Response Time", float64(agg.AvgResponseTimeMs)/1000))
 	}
 	b.WriteString("\n")
 
@@ -289,7 +309,7 @@ func (m StatisticsModel) renderDetailed() string {
 	if len(agg.ByOperation) > 0 {
 		b.WriteString(styles.Bold.Render("BY OPERATION"))
 		b.WriteString("\n")
-		b.WriteString(styles.Dim.Render(strings.Repeat("─", 30)))
+		b.WriteString(separator)
 		b.WriteString("\n")
 
 		// Sort operations for consistent display
@@ -299,11 +319,14 @@ func (m StatisticsModel) renderDetailed() string {
 		}
 		sort.Strings(ops)
 
+		// Calculate operation name width dynamically
+		opNameWidth := maxLen(ops)
+
 		for _, op := range ops {
 			stats := agg.ByOperation[op]
 			symbol := operationSymbol(op)
-			b.WriteString(fmt.Sprintf("%s  %-16s %3.0f%%   (%d correct)\n",
-				symbol, op, stats.Accuracy, stats.Correct))
+			b.WriteString(fmt.Sprintf("%s  %-*s  %3.0f%%  (%d correct)\n",
+				symbol, opNameWidth, op, stats.Accuracy, stats.Correct))
 		}
 		b.WriteString("\n")
 	}
@@ -312,7 +335,7 @@ func (m StatisticsModel) renderDetailed() string {
 	if len(agg.ByMode) > 0 {
 		b.WriteString(styles.Bold.Render("BY MODE"))
 		b.WriteString("\n")
-		b.WriteString(styles.Dim.Render(strings.Repeat("─", 30)))
+		b.WriteString(separator)
 		b.WriteString("\n")
 
 		// Sort modes by session count (descending)
@@ -328,12 +351,19 @@ func (m StatisticsModel) renderDetailed() string {
 			return modes[i].count > modes[j].count
 		})
 
+		// Calculate mode name width dynamically
+		modeNames := make([]string, len(modes))
+		for i, mc := range modes {
+			modeNames[i] = mc.name
+		}
+		modeNameWidth := maxLen(modeNames)
+
 		for _, mc := range modes {
 			plural := "sessions"
 			if mc.count == 1 {
 				plural = "session"
 			}
-			b.WriteString(fmt.Sprintf("%-20s %d %s\n", mc.name, mc.count, plural))
+			b.WriteString(fmt.Sprintf("%-*s  %d %s\n", modeNameWidth, mc.name, mc.count, plural))
 		}
 	}
 
