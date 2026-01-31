@@ -1,8 +1,6 @@
 package screens
 
 import (
-	"strings"
-
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
@@ -69,8 +67,6 @@ func (m PauseModel) Update(msg tea.Msg) (PauseModel, tea.Cmd) {
 
 // View renders the pause screen.
 func (m PauseModel) View() string {
-	var b strings.Builder
-
 	// Title
 	title := styles.Bold.Render("PAUSED")
 
@@ -83,23 +79,27 @@ func (m PauseModel) View() string {
 		{Key: "Enter", Action: "Resume"},
 	})
 
-	// Combine
-	content := lipgloss.JoinVertical(lipgloss.Center,
+	// Main content (without hints)
+	mainContent := lipgloss.JoinVertical(lipgloss.Center,
 		title,
 		"",
 		timer,
-		"",
-		"",
-		hints,
 	)
 
-	// Center in terminal
+	// Bottom-anchored hints layout with small gap at bottom
 	if m.width > 0 && m.height > 0 {
-		content = lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, content)
+		hintsHeight := lipgloss.Height(hints)
+		bottomPadding := 1
+		availableHeight := m.height - hintsHeight - bottomPadding
+
+		centeredMain := lipgloss.Place(m.width, availableHeight, lipgloss.Center, lipgloss.Center, mainContent)
+		centeredHints := lipgloss.Place(m.width, hintsHeight+bottomPadding, lipgloss.Center, lipgloss.Top, hints)
+
+		return lipgloss.JoinVertical(lipgloss.Left, centeredMain, centeredHints)
 	}
 
-	b.WriteString(content)
-	return b.String()
+	// Fallback for unknown dimensions
+	return lipgloss.JoinVertical(lipgloss.Center, mainContent, "", "", hints)
 }
 
 // Session returns the current session.

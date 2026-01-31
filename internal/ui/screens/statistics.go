@@ -105,18 +105,10 @@ func (m StatisticsModel) View() string {
 		return m.renderLoading()
 	}
 
-	var content string
 	if m.detailed {
-		content = m.renderDetailed()
-	} else {
-		content = m.renderSummary()
+		return m.renderDetailed()
 	}
-
-	if m.width > 0 && m.height > 0 {
-		content = lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, content)
-	}
-
-	return content
+	return m.renderSummary()
 }
 
 // renderLoading shows a loading state.
@@ -136,21 +128,30 @@ func (m StatisticsModel) renderLoading() string {
 
 // renderError shows an error state.
 func (m StatisticsModel) renderError() string {
-	content := lipgloss.JoinVertical(lipgloss.Center,
+	mainContent := lipgloss.JoinVertical(lipgloss.Center,
 		styles.Bold.Render("STATISTICS"),
 		"",
 		styles.Incorrect.Render("Error loading statistics"),
-		"",
-		components.RenderHintsStructured([]components.Hint{
-			{Key: "Esc", Action: "Back"},
-		}),
 	)
 
+	hints := components.RenderHintsStructured([]components.Hint{
+		{Key: "Esc", Action: "Back"},
+	})
+
+	// Bottom-anchored hints layout with small gap at bottom
 	if m.width > 0 && m.height > 0 {
-		content = lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, content)
+		hintsHeight := lipgloss.Height(hints)
+		bottomPadding := 1
+		availableHeight := m.height - hintsHeight - bottomPadding
+
+		centeredMain := lipgloss.Place(m.width, availableHeight, lipgloss.Center, lipgloss.Center, mainContent)
+		centeredHints := lipgloss.Place(m.width, hintsHeight+bottomPadding, lipgloss.Center, lipgloss.Top, hints)
+
+		return lipgloss.JoinVertical(lipgloss.Left, centeredMain, centeredHints)
 	}
 
-	return content
+	// Fallback for unknown dimensions
+	return lipgloss.JoinVertical(lipgloss.Center, mainContent, "", "", hints)
 }
 
 // renderSummary renders the summary view.
@@ -162,19 +163,33 @@ func (m StatisticsModel) renderSummary() string {
 
 	// Empty state
 	if agg.TotalSessions == 0 {
-		return lipgloss.JoinVertical(lipgloss.Center,
+		mainContent := lipgloss.JoinVertical(lipgloss.Center,
 			title,
 			"",
 			"",
 			styles.Dim.Render("No sessions yet."),
 			"",
 			styles.Dim.Render("Play a game to see your stats!"),
-			"",
-			"",
-			components.RenderHintsStructured([]components.Hint{
-				{Key: "Esc", Action: "Back"},
-			}),
 		)
+
+		hints := components.RenderHintsStructured([]components.Hint{
+			{Key: "Esc", Action: "Back"},
+		})
+
+		// Bottom-anchored hints layout with small gap at bottom
+		if m.width > 0 && m.height > 0 {
+			hintsHeight := lipgloss.Height(hints)
+			bottomPadding := 1
+			availableHeight := m.height - hintsHeight - bottomPadding
+
+			centeredMain := lipgloss.Place(m.width, availableHeight, lipgloss.Center, lipgloss.Center, mainContent)
+			centeredHints := lipgloss.Place(m.width, hintsHeight+bottomPadding, lipgloss.Center, lipgloss.Top, hints)
+
+			return lipgloss.JoinVertical(lipgloss.Left, centeredMain, centeredHints)
+		}
+
+		// Fallback for unknown dimensions
+		return lipgloss.JoinVertical(lipgloss.Center, mainContent, "", "", hints)
 	}
 
 	// Stats
@@ -186,13 +201,8 @@ func (m StatisticsModel) renderSummary() string {
 	// Per-operation accuracy (basic 4 operations)
 	opGrid := m.renderOperationGrid()
 
-	// Hints
-	hints := components.RenderHintsStructured([]components.Hint{
-		{Key: "Esc", Action: "Back"},
-		{Key: "D", Action: "Details"},
-	})
-
-	return lipgloss.JoinVertical(lipgloss.Center,
+	// Main content (without hints)
+	mainContent := lipgloss.JoinVertical(lipgloss.Center,
 		title,
 		"",
 		"",
@@ -202,10 +212,28 @@ func (m StatisticsModel) renderSummary() string {
 		separator,
 		"",
 		opGrid,
-		"",
-		"",
-		hints,
 	)
+
+	// Hints
+	hints := components.RenderHintsStructured([]components.Hint{
+		{Key: "Esc", Action: "Back"},
+		{Key: "D", Action: "Details"},
+	})
+
+	// Bottom-anchored hints layout with small gap at bottom
+	if m.width > 0 && m.height > 0 {
+		hintsHeight := lipgloss.Height(hints)
+		bottomPadding := 1
+		availableHeight := m.height - hintsHeight - bottomPadding
+
+		centeredMain := lipgloss.Place(m.width, availableHeight, lipgloss.Center, lipgloss.Center, mainContent)
+		centeredHints := lipgloss.Place(m.width, hintsHeight+bottomPadding, lipgloss.Center, lipgloss.Top, hints)
+
+		return lipgloss.JoinVertical(lipgloss.Left, centeredMain, centeredHints)
+	}
+
+	// Fallback for unknown dimensions
+	return lipgloss.JoinVertical(lipgloss.Center, mainContent, "", "", hints)
 }
 
 // renderOperationGrid renders a 2x2 grid of basic operation accuracies.
@@ -307,17 +335,30 @@ func (m StatisticsModel) renderDetailed() string {
 			}
 			b.WriteString(fmt.Sprintf("%-20s %d %s\n", mc.name, mc.count, plural))
 		}
-		b.WriteString("\n")
 	}
 
+	mainContent := b.String()
+
 	// Hints
-	b.WriteString("\n")
-	b.WriteString(components.RenderHintsStructured([]components.Hint{
+	hints := components.RenderHintsStructured([]components.Hint{
 		{Key: "Esc", Action: "Back"},
 		{Key: "S", Action: "Summary"},
-	}))
+	})
 
-	return b.String()
+	// Bottom-anchored hints layout with small gap at bottom
+	if m.width > 0 && m.height > 0 {
+		hintsHeight := lipgloss.Height(hints)
+		bottomPadding := 1
+		availableHeight := m.height - hintsHeight - bottomPadding
+
+		centeredMain := lipgloss.Place(m.width, availableHeight, lipgloss.Center, lipgloss.Center, mainContent)
+		centeredHints := lipgloss.Place(m.width, hintsHeight+bottomPadding, lipgloss.Center, lipgloss.Top, hints)
+
+		return lipgloss.JoinVertical(lipgloss.Left, centeredMain, centeredHints)
+	}
+
+	// Fallback for unknown dimensions
+	return lipgloss.JoinVertical(lipgloss.Center, mainContent, "", hints)
 }
 
 // SetSize sets the screen dimensions.

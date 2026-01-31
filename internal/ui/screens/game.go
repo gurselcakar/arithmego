@@ -388,18 +388,20 @@ func (m GameModel) View() string {
 		inputView,
 	)
 
-	// Place centered content in middle
+	// Layout with bottom-anchored hints and small gap at bottom
 	if m.width > 0 && m.height > 0 {
-		// Calculate available height after top row
-		availHeight := m.height - 5 // top row + spacing + hints
+		hintsHeight := lipgloss.Height(hints)
+		bottomPadding := 1
+		topRowHeight := lipgloss.Height(topRow)
+		availableHeight := m.height - topRowHeight - hintsHeight - bottomPadding
 
-		centeredQuestion := lipgloss.Place(m.width, availHeight-4, lipgloss.Center, lipgloss.Center, centerContent)
-		hintsLine := lipgloss.Place(m.width, 1, lipgloss.Center, lipgloss.Bottom, hints)
+		centeredQuestion := lipgloss.Place(m.width, availableHeight, lipgloss.Center, lipgloss.Center, centerContent)
+		centeredHints := lipgloss.Place(m.width, hintsHeight+bottomPadding, lipgloss.Center, lipgloss.Top, hints)
 
 		content := lipgloss.JoinVertical(lipgloss.Left,
 			topRow,
 			centeredQuestion,
-			hintsLine,
+			centeredHints,
 		)
 		b.WriteString(content)
 	} else {

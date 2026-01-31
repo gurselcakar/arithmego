@@ -228,26 +228,20 @@ func (m OnboardingModel) complete() tea.Cmd {
 
 // View renders the onboarding screen.
 func (m OnboardingModel) View() string {
-	var content string
-
 	switch m.step {
 	case StepWelcome:
-		content = m.viewWelcome()
+		return m.viewWelcome()
 	case StepDuration:
-		content = m.viewDuration()
+		return m.viewDuration()
 	case StepDifficulty:
-		content = m.viewDifficulty()
+		return m.viewDifficulty()
 	case StepOperation:
-		content = m.viewOperation()
+		return m.viewOperation()
 	case StepInputMode:
-		content = m.viewInputMode()
+		return m.viewInputMode()
+	default:
+		return ""
 	}
-
-	if m.width > 0 && m.height > 0 {
-		content = lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, content)
-	}
-
-	return content
 }
 
 // viewWelcome renders the welcome step.
@@ -258,12 +252,8 @@ func (m OnboardingModel) viewWelcome() string {
 	intro := "Welcome! Let's set up your first session."
 
 	progress := styles.Dim.Render(components.ProgressDots(1, totalSteps))
-	hints := components.RenderHintsStructured([]components.Hint{
-		{Key: "S", Action: "Skip"},
-		{Key: "Enter", Action: "Continue"},
-	})
 
-	return lipgloss.JoinVertical(lipgloss.Center,
+	mainContent := lipgloss.JoinVertical(lipgloss.Center,
 		logo,
 		tagline,
 		"",
@@ -272,9 +262,27 @@ func (m OnboardingModel) viewWelcome() string {
 		"",
 		"",
 		progress,
-		"",
-		hints,
 	)
+
+	hints := components.RenderHintsStructured([]components.Hint{
+		{Key: "S", Action: "Skip"},
+		{Key: "Enter", Action: "Continue"},
+	})
+
+	// Bottom-anchored hints layout with small gap at bottom
+	if m.width > 0 && m.height > 0 {
+		hintsHeight := lipgloss.Height(hints)
+		bottomPadding := 1
+		availableHeight := m.height - hintsHeight - bottomPadding
+
+		centeredMain := lipgloss.Place(m.width, availableHeight, lipgloss.Center, lipgloss.Center, mainContent)
+		centeredHints := lipgloss.Place(m.width, hintsHeight+bottomPadding, lipgloss.Center, lipgloss.Top, hints)
+
+		return lipgloss.JoinVertical(lipgloss.Left, centeredMain, centeredHints)
+	}
+
+	// Fallback for unknown dimensions
+	return lipgloss.JoinVertical(lipgloss.Center, mainContent, "", hints)
 }
 
 // viewDuration renders the duration selection step.
@@ -294,14 +302,8 @@ func (m OnboardingModel) viewDuration() string {
 	optionsList := lipgloss.JoinVertical(lipgloss.Left, options...)
 
 	progress := styles.Dim.Render(components.ProgressDots(2, totalSteps))
-	hints := components.RenderHintsStructured([]components.Hint{
-		{Key: "B", Action: "Back"},
-		{Key: "↑↓", Action: "Navigate"},
-		{Key: "S", Action: "Skip"},
-		{Key: "Enter", Action: "Continue"},
-	})
 
-	return lipgloss.JoinVertical(lipgloss.Center,
+	mainContent := lipgloss.JoinVertical(lipgloss.Center,
 		title,
 		subtitle,
 		"",
@@ -310,9 +312,29 @@ func (m OnboardingModel) viewDuration() string {
 		"",
 		"",
 		progress,
-		"",
-		hints,
 	)
+
+	hints := components.RenderHintsStructured([]components.Hint{
+		{Key: "B", Action: "Back"},
+		{Key: "↑↓", Action: "Navigate"},
+		{Key: "S", Action: "Skip"},
+		{Key: "Enter", Action: "Continue"},
+	})
+
+	// Bottom-anchored hints layout with small gap at bottom
+	if m.width > 0 && m.height > 0 {
+		hintsHeight := lipgloss.Height(hints)
+		bottomPadding := 1
+		availableHeight := m.height - hintsHeight - bottomPadding
+
+		centeredMain := lipgloss.Place(m.width, availableHeight, lipgloss.Center, lipgloss.Center, mainContent)
+		centeredHints := lipgloss.Place(m.width, hintsHeight+bottomPadding, lipgloss.Center, lipgloss.Top, hints)
+
+		return lipgloss.JoinVertical(lipgloss.Left, centeredMain, centeredHints)
+	}
+
+	// Fallback for unknown dimensions
+	return lipgloss.JoinVertical(lipgloss.Center, mainContent, "", hints)
 }
 
 // viewDifficulty renders the difficulty selection step.
@@ -332,14 +354,8 @@ func (m OnboardingModel) viewDifficulty() string {
 	optionsList := lipgloss.JoinVertical(lipgloss.Left, options...)
 
 	progress := styles.Dim.Render(components.ProgressDots(3, totalSteps))
-	hints := components.RenderHintsStructured([]components.Hint{
-		{Key: "B", Action: "Back"},
-		{Key: "↑↓", Action: "Navigate"},
-		{Key: "S", Action: "Skip"},
-		{Key: "Enter", Action: "Continue"},
-	})
 
-	return lipgloss.JoinVertical(lipgloss.Center,
+	mainContent := lipgloss.JoinVertical(lipgloss.Center,
 		title,
 		subtitle,
 		"",
@@ -348,9 +364,29 @@ func (m OnboardingModel) viewDifficulty() string {
 		"",
 		"",
 		progress,
-		"",
-		hints,
 	)
+
+	hints := components.RenderHintsStructured([]components.Hint{
+		{Key: "B", Action: "Back"},
+		{Key: "↑↓", Action: "Navigate"},
+		{Key: "S", Action: "Skip"},
+		{Key: "Enter", Action: "Continue"},
+	})
+
+	// Bottom-anchored hints layout with small gap at bottom
+	if m.width > 0 && m.height > 0 {
+		hintsHeight := lipgloss.Height(hints)
+		bottomPadding := 1
+		availableHeight := m.height - hintsHeight - bottomPadding
+
+		centeredMain := lipgloss.Place(m.width, availableHeight, lipgloss.Center, lipgloss.Center, mainContent)
+		centeredHints := lipgloss.Place(m.width, hintsHeight+bottomPadding, lipgloss.Center, lipgloss.Top, hints)
+
+		return lipgloss.JoinVertical(lipgloss.Left, centeredMain, centeredHints)
+	}
+
+	// Fallback for unknown dimensions
+	return lipgloss.JoinVertical(lipgloss.Center, mainContent, "", hints)
 }
 
 // viewOperation renders the operation selection step.
@@ -370,14 +406,8 @@ func (m OnboardingModel) viewOperation() string {
 	optionsList := lipgloss.JoinVertical(lipgloss.Left, options...)
 
 	progress := styles.Dim.Render(components.ProgressDots(4, totalSteps))
-	hints := components.RenderHintsStructured([]components.Hint{
-		{Key: "B", Action: "Back"},
-		{Key: "↑↓", Action: "Navigate"},
-		{Key: "S", Action: "Skip"},
-		{Key: "Enter", Action: "Continue"},
-	})
 
-	return lipgloss.JoinVertical(lipgloss.Center,
+	mainContent := lipgloss.JoinVertical(lipgloss.Center,
 		title,
 		subtitle,
 		"",
@@ -386,9 +416,29 @@ func (m OnboardingModel) viewOperation() string {
 		"",
 		"",
 		progress,
-		"",
-		hints,
 	)
+
+	hints := components.RenderHintsStructured([]components.Hint{
+		{Key: "B", Action: "Back"},
+		{Key: "↑↓", Action: "Navigate"},
+		{Key: "S", Action: "Skip"},
+		{Key: "Enter", Action: "Continue"},
+	})
+
+	// Bottom-anchored hints layout with small gap at bottom
+	if m.width > 0 && m.height > 0 {
+		hintsHeight := lipgloss.Height(hints)
+		bottomPadding := 1
+		availableHeight := m.height - hintsHeight - bottomPadding
+
+		centeredMain := lipgloss.Place(m.width, availableHeight, lipgloss.Center, lipgloss.Center, mainContent)
+		centeredHints := lipgloss.Place(m.width, hintsHeight+bottomPadding, lipgloss.Center, lipgloss.Top, hints)
+
+		return lipgloss.JoinVertical(lipgloss.Left, centeredMain, centeredHints)
+	}
+
+	// Fallback for unknown dimensions
+	return lipgloss.JoinVertical(lipgloss.Center, mainContent, "", hints)
 }
 
 // viewInputMode renders the input mode selection step.
@@ -414,14 +464,8 @@ func (m OnboardingModel) viewInputMode() string {
 	optionsList := lipgloss.JoinVertical(lipgloss.Left, options...)
 
 	progress := styles.Dim.Render(components.ProgressDots(5, totalSteps))
-	hints := components.RenderHintsStructured([]components.Hint{
-		{Key: "B", Action: "Back"},
-		{Key: "↑↓", Action: "Navigate"},
-		{Key: "S", Action: "Skip"},
-		{Key: "Enter", Action: "Start Game"},
-	})
 
-	return lipgloss.JoinVertical(lipgloss.Center,
+	mainContent := lipgloss.JoinVertical(lipgloss.Center,
 		title,
 		subtitle,
 		"",
@@ -430,9 +474,29 @@ func (m OnboardingModel) viewInputMode() string {
 		"",
 		"",
 		progress,
-		"",
-		hints,
 	)
+
+	hints := components.RenderHintsStructured([]components.Hint{
+		{Key: "B", Action: "Back"},
+		{Key: "↑↓", Action: "Navigate"},
+		{Key: "S", Action: "Skip"},
+		{Key: "Enter", Action: "Start Game"},
+	})
+
+	// Bottom-anchored hints layout with small gap at bottom
+	if m.width > 0 && m.height > 0 {
+		hintsHeight := lipgloss.Height(hints)
+		bottomPadding := 1
+		availableHeight := m.height - hintsHeight - bottomPadding
+
+		centeredMain := lipgloss.Place(m.width, availableHeight, lipgloss.Center, lipgloss.Center, mainContent)
+		centeredHints := lipgloss.Place(m.width, hintsHeight+bottomPadding, lipgloss.Center, lipgloss.Top, hints)
+
+		return lipgloss.JoinVertical(lipgloss.Left, centeredMain, centeredHints)
+	}
+
+	// Fallback for unknown dimensions
+	return lipgloss.JoinVertical(lipgloss.Center, mainContent, "", hints)
 }
 
 // SetSize updates the screen dimensions.

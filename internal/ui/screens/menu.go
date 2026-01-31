@@ -185,34 +185,39 @@ func (m MenuModel) View() string {
 		updateNotice = styles.Dim.Render("Update available: " + m.updateVersion + " · run 'arithmego update'")
 	}
 
-	// Combine all elements
-	content := lipgloss.JoinVertical(lipgloss.Center,
+	// Build main content (without hints)
+	mainContent := lipgloss.JoinVertical(lipgloss.Center,
 		logo,
 		"",
 		tagline,
 		"",
 		"",
 		menu,
-		"",
-		"",
-		hints,
 	)
 
-	// Add update notice at the bottom if available
+	// Build bottom section with hints and optional update notice
+	var bottomSection string
 	if updateNotice != "" {
-		content = lipgloss.JoinVertical(lipgloss.Center,
-			content,
-			"",
-			updateNotice,
-		)
+		bottomSection = lipgloss.JoinVertical(lipgloss.Center, hints, "", updateNotice)
+	} else {
+		bottomSection = hints
 	}
 
-	// Center in terminal
+	// Bottom-anchored hints layout with small gap at bottom
 	if m.width > 0 && m.height > 0 {
-		content = lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, content)
+		bottomHeight := lipgloss.Height(bottomSection)
+		bottomPadding := 1
+		availableHeight := m.height - bottomHeight - bottomPadding
+
+		centeredMain := lipgloss.Place(m.width, availableHeight, lipgloss.Center, lipgloss.Center, mainContent)
+		centeredBottom := lipgloss.Place(m.width, bottomHeight+bottomPadding, lipgloss.Center, lipgloss.Top, bottomSection)
+
+		b.WriteString(lipgloss.JoinVertical(lipgloss.Left, centeredMain, centeredBottom))
+		return b.String()
 	}
 
-	b.WriteString(content)
+	// Fallback for unknown dimensions
+	b.WriteString(lipgloss.JoinVertical(lipgloss.Center, mainContent, "", "", bottomSection))
 	return b.String()
 }
 

@@ -533,8 +533,7 @@ func (m PracticeModel) viewClean() string {
 		inputView,
 	)
 
-	// Bottom bar - hints differ based on input mode
-	separator := styles.Dim.Render(strings.Repeat("─", min(m.width-4, 78)))
+	// Hints - differ based on input mode
 	var hints string
 	if m.inputMethod == components.InputMultipleChoice {
 		hints = components.RenderHintsStructured([]components.Hint{
@@ -553,19 +552,19 @@ func (m PracticeModel) viewClean() string {
 			{Key: "S", Action: "Skip"},
 		})
 	}
-	bottomBar := lipgloss.JoinVertical(lipgloss.Center, separator, hints)
 
-	// Layout
+	// Layout with bottom-anchored hints and small gap at bottom
 	if m.width > 0 && m.height > 0 {
-		// Calculate layout dimensions
+		hintsHeight := lipgloss.Height(hints)
+		bottomPadding := 1
 		indicatorWidth := 20
 		centerWidth := m.width - indicatorWidth*2
-		availHeight := m.height - 4 // Reserve space for bottom bar
+		availableHeight := m.height - hintsHeight - bottomPadding
 
 		// Position indicator on left
 		indicatorCol := lipgloss.NewStyle().
 			Width(indicatorWidth).
-			Height(availHeight).
+			Height(availableHeight).
 			Align(lipgloss.Left).
 			AlignVertical(lipgloss.Center).
 			PaddingLeft(2).
@@ -574,7 +573,7 @@ func (m PracticeModel) viewClean() string {
 		// Center the question
 		centerCol := lipgloss.NewStyle().
 			Width(centerWidth).
-			Height(availHeight).
+			Height(availableHeight).
 			Align(lipgloss.Center).
 			AlignVertical(lipgloss.Center).
 			Render(centerContent)
@@ -582,18 +581,15 @@ func (m PracticeModel) viewClean() string {
 		// Empty right column for balance
 		rightCol := lipgloss.NewStyle().
 			Width(indicatorWidth).
-			Height(availHeight).
+			Height(availableHeight).
 			Render("")
 
 		mainArea := lipgloss.JoinHorizontal(lipgloss.Top, indicatorCol, centerCol, rightCol)
 
-		// Combine with bottom bar
-		bottomBarStyled := lipgloss.NewStyle().
-			Width(m.width).
-			Align(lipgloss.Center).
-			Render(bottomBar)
+		// Center hints at bottom with padding
+		centeredHints := lipgloss.Place(m.width, hintsHeight+bottomPadding, lipgloss.Center, lipgloss.Top, hints)
 
-		return lipgloss.JoinVertical(lipgloss.Left, mainArea, bottomBarStyled)
+		return lipgloss.JoinVertical(lipgloss.Left, mainArea, centeredHints)
 	}
 
 	// Fallback for unknown dimensions
@@ -604,7 +600,7 @@ func (m PracticeModel) viewClean() string {
 		centerContent,
 		"",
 		"",
-		bottomBar,
+		hints,
 	)
 }
 
@@ -633,8 +629,7 @@ func (m PracticeModel) viewWithSettingsPanel() string {
 		inputView,
 	)
 
-	// Bottom bar (different hints when settings open)
-	separator := styles.Dim.Render(strings.Repeat("─", min(m.width-4, 78)))
+	// Hints (different hints when settings open)
 	hints := components.RenderHintsStructured([]components.Hint{
 		{Key: "Esc", Action: "Close"},
 		{Key: "Tab", Action: "Next"},
@@ -642,18 +637,19 @@ func (m PracticeModel) viewWithSettingsPanel() string {
 		{Key: "←→", Action: "Adjust"},
 		{Key: "Enter", Action: "Confirm"},
 	})
-	bottomBar := lipgloss.JoinVertical(lipgloss.Center, separator, hints)
 
-	// Layout
+	// Layout with bottom-anchored hints and small gap at bottom
 	if m.width > 0 && m.height > 0 {
+		hintsHeight := lipgloss.Height(hints)
+		bottomPadding := 1
 		panelWidth := 28
 		centerWidth := m.width - panelWidth - 4
-		availHeight := m.height - 4
+		availableHeight := m.height - hintsHeight - bottomPadding
 
 		// Settings panel on left
 		panelCol := lipgloss.NewStyle().
 			Width(panelWidth).
-			Height(availHeight).
+			Height(availableHeight).
 			Align(lipgloss.Left).
 			AlignVertical(lipgloss.Top).
 			PaddingLeft(2).
@@ -663,19 +659,17 @@ func (m PracticeModel) viewWithSettingsPanel() string {
 		// Center the question
 		centerCol := lipgloss.NewStyle().
 			Width(centerWidth).
-			Height(availHeight).
+			Height(availableHeight).
 			Align(lipgloss.Center).
 			AlignVertical(lipgloss.Center).
 			Render(centerContent)
 
 		mainArea := lipgloss.JoinHorizontal(lipgloss.Top, panelCol, centerCol)
 
-		bottomBarStyled := lipgloss.NewStyle().
-			Width(m.width).
-			Align(lipgloss.Center).
-			Render(bottomBar)
+		// Center hints at bottom with padding
+		centeredHints := lipgloss.Place(m.width, hintsHeight+bottomPadding, lipgloss.Center, lipgloss.Top, hints)
 
-		return lipgloss.JoinVertical(lipgloss.Left, mainArea, bottomBarStyled)
+		return lipgloss.JoinVertical(lipgloss.Left, mainArea, centeredHints)
 	}
 
 	// Fallback
@@ -684,7 +678,7 @@ func (m PracticeModel) viewWithSettingsPanel() string {
 		"",
 		centerContent,
 		"",
-		bottomBar,
+		hints,
 	)
 }
 

@@ -99,7 +99,7 @@ func (m ResultsModel) View() string {
 		saveWarning = styles.Dim.Render("(Statistics could not be saved)")
 	}
 
-	// Combine
+	// Build main content (without hints)
 	var contentParts []string
 	contentParts = append(contentParts, title, "", "")
 	contentParts = append(contentParts, score, scoreLabel, "")
@@ -108,19 +108,27 @@ func (m ResultsModel) View() string {
 	if bestStreak != "" {
 		contentParts = append(contentParts, bestStreak)
 	}
-	contentParts = append(contentParts, "", "", hints)
 	if saveWarning != "" {
 		contentParts = append(contentParts, "", saveWarning)
 	}
 
-	content := lipgloss.JoinVertical(lipgloss.Center, contentParts...)
+	mainContent := lipgloss.JoinVertical(lipgloss.Center, contentParts...)
 
-	// Center in terminal
+	// Bottom-anchored hints layout with small gap at bottom
 	if m.width > 0 && m.height > 0 {
-		content = lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, content)
+		hintsHeight := lipgloss.Height(hints)
+		bottomPadding := 1
+		availableHeight := m.height - hintsHeight - bottomPadding
+
+		centeredMain := lipgloss.Place(m.width, availableHeight, lipgloss.Center, lipgloss.Center, mainContent)
+		centeredHints := lipgloss.Place(m.width, hintsHeight+bottomPadding, lipgloss.Center, lipgloss.Top, hints)
+
+		b.WriteString(lipgloss.JoinVertical(lipgloss.Left, centeredMain, centeredHints))
+		return b.String()
 	}
 
-	b.WriteString(content)
+	// Fallback for unknown dimensions
+	b.WriteString(lipgloss.JoinVertical(lipgloss.Center, mainContent, "", "", hints))
 	return b.String()
 }
 
