@@ -8,7 +8,7 @@ import (
 const (
 	configDirName  = "arithmego"
 	statisticsFile = "statistics.json"
-	settingsFile   = "settings.json"
+	configFile     = "config.json"
 )
 
 // configDirOverride allows tests to use a temporary directory.
@@ -50,11 +50,11 @@ func StatisticsPath() (string, error) {
 	return filepath.Join(dir, statisticsFile), nil
 }
 
-// SettingsPath returns the path to the settings file.
-func SettingsPath() (string, error) {
+// ConfigPath returns the path to the config file.
+func ConfigPath() (string, error) {
 	dir, err := ConfigDir()
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(dir, settingsFile), nil
+	return filepath.Join(dir, configFile), nil
 }

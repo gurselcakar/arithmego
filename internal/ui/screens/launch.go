@@ -9,6 +9,7 @@ import (
 
 	"github.com/gurselcakar/arithmego/internal/game"
 	"github.com/gurselcakar/arithmego/internal/modes"
+	"github.com/gurselcakar/arithmego/internal/storage"
 	"github.com/gurselcakar/arithmego/internal/ui/components"
 	"github.com/gurselcakar/arithmego/internal/ui/styles"
 )
@@ -44,18 +45,24 @@ type LaunchModel struct {
 }
 
 // NewLaunch creates a new launch model for the given mode.
-func NewLaunch(mode *modes.Mode) LaunchModel {
-	// Find the index of the mode's default difficulty
-	diffIdx := 0
-	for i, d := range game.AllDifficulties() {
-		if d == mode.DefaultDifficulty {
-			diffIdx = i
-			break
-		}
-	}
+// If config is provided, uses config defaults; otherwise uses mode defaults.
+func NewLaunch(mode *modes.Mode, config *storage.Config) LaunchModel {
+	var diffIdx, durIdx int
 
-	// Find the index of the mode's default duration
-	durIdx := modes.FindDurationIndex(mode.DefaultDuration)
+	if config != nil && config.DefaultDifficulty != "" {
+		// Use config defaults
+		diffIdx = findLaunchDifficultyIndex(config.DefaultDifficulty)
+		durIdx = modes.FindDurationIndex(time.Duration(config.DefaultDurationMs) * time.Millisecond)
+	} else {
+		// Fall back to mode defaults
+		for i, d := range game.AllDifficulties() {
+			if d == mode.DefaultDifficulty {
+				diffIdx = i
+				break
+			}
+		}
+		durIdx = modes.FindDurationIndex(mode.DefaultDuration)
+	}
 
 	return LaunchModel{
 		mode:            mode,
@@ -63,6 +70,23 @@ func NewLaunch(mode *modes.Mode) LaunchModel {
 		durationIndex:   durIdx,
 		focusedField:    FieldDifficulty,
 	}
+}
+
+// findLaunchDifficultyIndex finds the index of a difficulty by name.
+func findLaunchDifficultyIndex(name string) int {
+	diffs := game.AllDifficulties()
+	for i, d := range diffs {
+		if d.String() == name {
+			return i
+		}
+	}
+	// Fallback: find the default difficulty
+	for i, d := range diffs {
+		if d.String() == storage.DefaultDifficulty {
+			return i
+		}
+	}
+	return 0
 }
 
 // Init initializes the launch model.

@@ -29,29 +29,39 @@ arithmego version      → Show version
 
 ## Data Storage
 
-Location: `~/.config/arithmego/`
+Location: Platform-specific config directory
+- macOS: `~/.config/arithmego/`
+- Linux: `~/.config/arithmego/`
 
 ```
-~/.config/arithmego/
-├── config.json        # User preferences
-├── statistics.json    # Game history
-├── modes.json         # Custom modes
-└── state.json         # Last played settings
+arithmego/
+├── config.json        # User preferences + Quick Play state
+└── statistics.json    # Game history
 ```
 
 All files are JSON. Human-readable, easy to debug.
 
 ### config.json
 
-User preferences with sensible defaults:
+User preferences and Quick Play state:
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
+| `default_difficulty` | string | `"Medium"` | Default difficulty for new games |
+| `default_duration_ms` | int | `60000` | Default duration in milliseconds |
 | `auto_update` | bool | `true` | Check for updates on launch |
+| `last_played_mode_id` | string | - | Quick Play: last mode ID |
+| `last_played_difficulty` | string | - | Quick Play: last difficulty |
+| `last_played_duration_ms` | int | - | Quick Play: last duration |
 
 ```json
 {
-  "auto_update": true
+  "default_difficulty": "Medium",
+  "default_duration_ms": 60000,
+  "auto_update": true,
+  "last_played_mode_id": "addition",
+  "last_played_difficulty": "Hard",
+  "last_played_duration_ms": 120000
 }
 ```
 
@@ -279,7 +289,8 @@ Reusable UI elements in `internal/ui/components/`:
 | `keyhints.go` | Navigation hints |
 | `scoreboard.go` | Points/streak display (Phase 4) |
 | `selector.go` | Horizontal selector (◀ value ▶) |
-| `choices.go` | Multiple choice input (Phase 10) |
+| `toggle.go` | Boolean toggle ([ON]/[OFF]) |
+| `choices.go` | Multiple choice input (Phase 11) |
 
 ---
 

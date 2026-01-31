@@ -1,28 +1,57 @@
 package screens
 
 import (
+	"strings"
+
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
+	"github.com/gurselcakar/arithmego/internal/game"
+	"github.com/gurselcakar/arithmego/internal/modes"
+	"github.com/gurselcakar/arithmego/internal/storage"
 	"github.com/gurselcakar/arithmego/internal/ui/components"
 	"github.com/gurselcakar/arithmego/internal/ui/styles"
 )
 
-// Phase 8: Implement user preferences
-// - Input method selection
-// - Default difficulty
-// - Default duration
-// - Display options
+// SettingsField identifies which field is currently focused.
+type SettingsField int
+
+const (
+	SettingsFieldDifficulty SettingsField = iota
+	SettingsFieldDuration
+	SettingsFieldAutoUpdate
+)
+
+const settingsFieldCount = 3
 
 // SettingsModel represents the settings screen.
 type SettingsModel struct {
-	width  int
-	height int
+	config *storage.Config
+
+	// UI state
+	focusedField    SettingsField
+	difficultyIndex int
+	durationIndex   int
+	width           int
+	height          int
 }
 
 // NewSettings creates a new settings model.
-func NewSettings() SettingsModel {
-	return SettingsModel{}
+func NewSettings(config *storage.Config) SettingsModel {
+	if config == nil {
+		config = storage.NewConfig()
+	}
+
+	// Find indices for current values
+	diffIdx := findDifficultyIndex(config.DefaultDifficulty)
+	durIdx := findDurationIndexByMs(config.DefaultDurationMs)
+
+	return SettingsModel{
+		config:          config,
+		difficultyIndex: diffIdx,
+		durationIndex:   durIdx,
+		focusedField:    SettingsFieldDifficulty,
+	}
 }
 
 // Init initializes the settings model.
@@ -39,7 +68,20 @@ func (m SettingsModel) Update(msg tea.Msg) (SettingsModel, tea.Cmd) {
 		return m, nil
 
 	case tea.KeyMsg:
-		if msg.String() == "esc" {
+		switch msg.String() {
+		case "up", "k":
+			m.focusPrev()
+		case "down", "j":
+			m.focusNext()
+		case "left", "h":
+			m.adjustValue(-1)
+		case "right", "l":
+			m.adjustValue(1)
+		case "enter", " ":
+			if m.focusedField == SettingsFieldAutoUpdate {
+				m.toggleAutoUpdate()
+			}
+		case "esc":
 			return m, func() tea.Msg {
 				return ReturnToMenuMsg{}
 			}
@@ -49,23 +91,181 @@ func (m SettingsModel) Update(msg tea.Msg) (SettingsModel, tea.Cmd) {
 	return m, nil
 }
 
+// focusPrev moves focus to the previous field.
+func (m *SettingsModel) focusPrev() {
+	if m.focusedField > 0 {
+		m.focusedField--
+	}
+}
+
+// focusNext moves focus to the next field.
+func (m *SettingsModel) focusNext() {
+	if m.focusedField < settingsFieldCount-1 {
+		m.focusedField++
+	}
+}
+
+// adjustValue changes the value of the focused field.
+func (m *SettingsModel) adjustValue(delta int) {
+	switch m.focusedField {
+	case SettingsFieldDifficulty:
+		diffs := game.AllDifficulties()
+		m.difficultyIndex += delta
+		if m.difficultyIndex < 0 {
+			m.difficultyIndex = 0
+		}
+		if m.difficultyIndex >= len(diffs) {
+			m.difficultyIndex = len(diffs) - 1
+		}
+		m.config.DefaultDifficulty = diffs[m.difficultyIndex].String()
+		m.saveConfig()
+
+	case SettingsFieldDuration:
+		durs := modes.AllowedDurations
+		m.durationIndex += delta
+		if m.durationIndex < 0 {
+			m.durationIndex = 0
+		}
+		if m.durationIndex >= len(durs) {
+			m.durationIndex = len(durs) - 1
+		}
+		m.config.DefaultDurationMs = durs[m.durationIndex].Value.Milliseconds()
+		m.saveConfig()
+
+	case SettingsFieldAutoUpdate:
+		m.toggleAutoUpdate()
+	}
+}
+
+// toggleAutoUpdate toggles the auto-update preference.
+func (m *SettingsModel) toggleAutoUpdate() {
+	m.config.AutoUpdate = !m.config.AutoUpdate
+	m.saveConfig()
+}
+
+// saveConfig persists the current config to disk.
+func (m *SettingsModel) saveConfig() {
+	// Ignore errors - settings are non-critical
+	_ = storage.SaveConfig(m.config)
+}
+
 // View renders the settings screen.
 func (m SettingsModel) View() string {
-	title := styles.Bold.Render("SETTINGS")
-	body := "Coming soon."
-	hints := components.RenderHints([]string{"Esc Back"})
+	var b strings.Builder
 
+	// Title
+	title := styles.Bold.Render("SETTINGS")
+
+	separator := styles.Dim.Render(strings.Repeat("─", 30))
+
+	// Defaults section
+	defaultsHeader := styles.Bold.Render("DEFAULTS")
+
+	diffs := game.AllDifficulties()
+	durs := modes.AllowedDurations
+
+	difficultyRow := components.RenderSelector(m.difficultyIndex, settingsDifficultyNames(diffs), components.SelectorOptions{
+		Label:   "Difficulty",
+		Focused: m.focusedField == SettingsFieldDifficulty,
+	})
+
+	durationRow := components.RenderSelector(m.durationIndex, settingsDurationNames(durs), components.SelectorOptions{
+		Label:   "Duration",
+		Focused: m.focusedField == SettingsFieldDuration,
+	})
+
+	// Preferences section
+	preferencesHeader := styles.Bold.Render("PREFERENCES")
+
+	autoUpdateRow := components.RenderToggle(m.config.AutoUpdate, components.ToggleOptions{
+		Label:   "Auto-update",
+		Focused: m.focusedField == SettingsFieldAutoUpdate,
+	})
+
+	// Hints
+	hints := components.RenderHints([]string{"↑↓ Navigate", "←→ Change", "Esc Back"})
+
+	// Combine all elements
 	content := lipgloss.JoinVertical(lipgloss.Center,
 		title,
 		"",
-		body,
+		separator,
+		"",
+		defaultsHeader,
+		"",
+		difficultyRow,
+		"",
+		durationRow,
+		"",
+		separator,
+		"",
+		preferencesHeader,
+		"",
+		autoUpdateRow,
+		"",
 		"",
 		hints,
 	)
 
+	// Center in terminal
 	if m.width > 0 && m.height > 0 {
 		content = lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, content)
 	}
 
-	return content
+	b.WriteString(content)
+	return b.String()
+}
+
+// SetSize sets the screen dimensions.
+func (m *SettingsModel) SetSize(width, height int) {
+	m.width = width
+	m.height = height
+}
+
+// Config returns the current config.
+func (m *SettingsModel) Config() *storage.Config {
+	return m.config
+}
+
+// Helper functions
+
+func findDifficultyIndex(name string) int {
+	diffs := game.AllDifficulties()
+	for i, d := range diffs {
+		if d.String() == name {
+			return i
+		}
+	}
+	// Fallback: find the default difficulty
+	for i, d := range diffs {
+		if d.String() == storage.DefaultDifficulty {
+			return i
+		}
+	}
+	return 0
+}
+
+func findDurationIndexByMs(ms int64) int {
+	for i, d := range modes.AllowedDurations {
+		if d.Value.Milliseconds() == ms {
+			return i
+		}
+	}
+	return 1 // Default to 60s (index 1)
+}
+
+func settingsDifficultyNames(diffs []game.Difficulty) []string {
+	names := make([]string, len(diffs))
+	for i, d := range diffs {
+		names[i] = d.String()
+	}
+	return names
+}
+
+func settingsDurationNames(durs []modes.Duration) []string {
+	names := make([]string, len(durs))
+	for i, d := range durs {
+		names[i] = d.Label
+	}
+	return names
 }

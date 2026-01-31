@@ -35,8 +35,8 @@ type App struct {
 	lastDifficulty game.Difficulty
 	lastDuration   time.Duration
 
-	// User settings (for Quick Play)
-	settings *storage.Settings
+	// User config (for Quick Play and defaults)
+	config *storage.Config
 
 	// Error tracking
 	lastSaveError error
@@ -44,24 +44,19 @@ type App struct {
 
 // New creates a new App instance.
 func New() *App {
-	// Load settings (ignore errors, use empty settings as fallback)
-	settings, _ := storage.LoadSettings()
-	if settings == nil {
-		settings = &storage.Settings{}
+	// Load config (ignore errors, use default config as fallback)
+	config, _ := storage.LoadConfig()
+	if config == nil {
+		config = storage.NewConfig()
 	}
 
 	// Build menu with Quick Play if we have last played data
 	var menuModel screens.MenuModel
-	if settings.HasLastPlayed() {
-		if mode, ok := modes.Get(settings.LastPlayedModeID); ok {
-			menuModel = screens.NewMenuWithQuickPlay(&screens.QuickPlayInfo{
-				ModeName: mode.Name,
-			})
-		} else {
-			// Mode no longer exists, clear invalid settings
-			settings = &storage.Settings{}
-			menuModel = screens.NewMenu()
-		}
+	if config.HasLastPlayed() {
+		mode, _ := modes.Get(config.LastPlayedModeID)
+		menuModel = screens.NewMenuWithQuickPlay(&screens.QuickPlayInfo{
+			ModeName: mode.Name,
+		})
 	} else {
 		menuModel = screens.NewMenu()
 	}
@@ -72,9 +67,9 @@ func New() *App {
 		modesModel:      screens.NewModes(),
 		practiceModel:   screens.NewPractice(),
 		statisticsModel: screens.NewStatistics(),
-		settingsModel:   screens.NewSettings(),
+		settingsModel:   screens.NewSettings(config),
 		onboardingModel: screens.NewOnboarding(),
-		settings:        settings,
+		config:          config,
 	}
 }
 
@@ -144,6 +139,8 @@ func (a *App) updateMenu(msg tea.Msg) (tea.Model, tea.Cmd) {
 			a.screen = ScreenStatistics
 			return a, a.statisticsModel.Init()
 		case screens.ActionSettings:
+			a.settingsModel = screens.NewSettings(a.config)
+			a.settingsModel.SetSize(a.width, a.height)
 			a.screen = ScreenSettings
 			return a, a.settingsModel.Init()
 		}
@@ -242,7 +239,7 @@ func (a *App) updateModes(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Check for mode selection
 	if selectMsg, ok := msg.(screens.ModeSelectMsg); ok {
 		a.currentMode = selectMsg.Mode
-		a.launchModel = screens.NewLaunch(a.currentMode)
+		a.launchModel = screens.NewLaunch(a.currentMode, a.config)
 		a.launchModel.SetSize(a.width, a.height)
 		a.screen = ScreenLaunch
 		return a, a.launchModel.Init()
@@ -311,6 +308,9 @@ func (a *App) updateSettings(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	a.settingsModel, cmd = a.settingsModel.Update(msg)
 
+	// Keep config in sync with settings model
+	a.config = a.settingsModel.Config()
+
 	if _, ok := msg.(screens.ReturnToMenuMsg); ok {
 		a.screen = ScreenMenu
 		return a, nil
@@ -352,62 +352,43 @@ func (a *App) startGame() (tea.Model, tea.Cmd) {
 
 // startQuickPlay starts a game with the last played settings.
 func (a *App) startQuickPlay() (tea.Model, tea.Cmd) {
-	if a.settings == nil || !a.settings.HasLastPlayed() {
-		// Fallback to modes screen if no last played data
-		a.modesModel = screens.NewModes()
-		a.modesModel.SetSize(a.width, a.height)
-		a.screen = ScreenModes
-		return a, a.modesModel.Init()
-	}
+	mode, _ := modes.Get(a.config.LastPlayedModeID)
 
-	// Load mode from registry
-	mode, ok := modes.Get(a.settings.LastPlayedModeID)
-	if !ok {
-		// Mode no longer exists, fallback to modes screen
-		a.modesModel = screens.NewModes()
-		a.modesModel.SetSize(a.width, a.height)
-		a.screen = ScreenModes
-		return a, a.modesModel.Init()
-	}
-
-	// Set up game state from settings
 	a.currentMode = mode
-	a.lastDifficulty = game.ParseDifficulty(a.settings.LastPlayedDifficulty)
-	a.lastDuration = time.Duration(a.settings.LastPlayedDurationMs) * time.Millisecond
+	a.lastDifficulty = game.ParseDifficulty(a.config.LastPlayedDifficulty)
+	a.lastDuration = time.Duration(a.config.LastPlayedDurationMs) * time.Millisecond
 
 	return a.startGame()
 }
 
-// saveLastPlayed saves the current game configuration to settings.
+// saveLastPlayed saves the current game configuration to config.
 // Must only be called from the main Bubble Tea update loop (single-threaded).
 func (a *App) saveLastPlayed() {
-	if a.settings == nil {
-		a.settings = &storage.Settings{}
+	if a.config == nil {
+		a.config = storage.NewConfig()
 	}
 	if a.currentMode == nil {
 		return
 	}
 
-	a.settings.LastPlayedModeID = a.currentMode.ID
-	a.settings.LastPlayedDifficulty = a.lastDifficulty.String()
-	a.settings.LastPlayedDurationMs = a.lastDuration.Milliseconds()
+	a.config.LastPlayedModeID = a.currentMode.ID
+	a.config.LastPlayedDifficulty = a.lastDifficulty.String()
+	a.config.LastPlayedDurationMs = a.lastDuration.Milliseconds()
 
-	// Ignore save errors - settings are non-critical
-	_ = storage.SaveSettings(a.settings)
+	// Ignore save errors - config is non-critical
+	_ = storage.SaveConfig(a.config)
 }
 
 // rebuildMenu rebuilds the menu model with current Quick Play state.
 func (a *App) rebuildMenu() {
-	if a.settings != nil && a.settings.HasLastPlayed() {
-		if mode, ok := modes.Get(a.settings.LastPlayedModeID); ok {
-			a.menuModel = screens.NewMenuWithQuickPlay(&screens.QuickPlayInfo{
-				ModeName: mode.Name,
-			})
-			a.menuModel.SetSize(a.width, a.height)
-			return
-		}
+	if a.config != nil && a.config.HasLastPlayed() {
+		mode, _ := modes.Get(a.config.LastPlayedModeID)
+		a.menuModel = screens.NewMenuWithQuickPlay(&screens.QuickPlayInfo{
+			ModeName: mode.Name,
+		})
+	} else {
+		a.menuModel = screens.NewMenu()
 	}
-	a.menuModel = screens.NewMenu()
 	a.menuModel.SetSize(a.width, a.height)
 }
 

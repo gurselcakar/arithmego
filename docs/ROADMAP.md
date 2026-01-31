@@ -16,10 +16,11 @@ Development phases for ArithmeGo.
 | 5 | Statistics | Complete |
 | 6 | Quick Play | Complete |
 | 7 | Practice Mode | Complete |
-| 8 | Settings & Onboarding | Planned |
-| 9 | CLI Commands | Planned |
-| 10 | Polish | Planned |
-| 11 | Distribution | Planned |
+| 8 | Settings | Complete |
+| 9 | Onboarding | Planned |
+| 10 | CLI Commands | Planned |
+| 11 | Polish | Planned |
+| 12 | Distribution | Planned |
 
 Each phase builds on the previous. Each delivers something testable.
 
@@ -103,13 +104,10 @@ Includes:
 Remember last played mode. Quick Play option on main menu for returning users.
 
 Includes:
-- Settings storage (`~/.config/arithmego/settings.json`)
-- Persistent last-played configuration (mode, difficulty, duration)
+- Persistent last-played configuration in config.json (mode, difficulty, duration)
 - Quick Play menu item showing last played mode name
 - Instant game start with saved settings
 - Automatic settings update after each completed game
-- Graceful handling of removed modes and corrupted settings
-- Comprehensive test coverage for settings operations
 
 ### Phase 7: Practice Mode
 
@@ -126,17 +124,34 @@ Includes:
 - Shared horizontal selector component extracted for reuse
 - Question stays visible when settings panel is open
 
-### Phase 8: Settings & Onboarding
+### Phase 8: Settings
 
-First-time user experience. Preferences screen. Guided setup flow.
+Persistent user preferences. Settings screen accessible from main menu.
 
 Includes:
 - Config storage (`~/.config/arithmego/config.json`)
-- Auto-update preference (enabled by default, user can disable)
-- Settings screen with toggle controls
-- First-run onboarding flow
+- Unified config file for preferences and Quick Play state
+- Settings screen with Defaults and Preferences sections
+- Default difficulty and duration selectors (applied to Launch screen)
+- Auto-update toggle (enabled by default)
+- Toggle component for boolean settings
+- Immediate save on change
 
-### Phase 9: CLI Commands
+### Phase 9: Onboarding
+
+First-time user experience. Guided setup flow for new users.
+
+Includes:
+- First-run detection (config file presence or `onboarded` flag)
+- Welcome screen with logo and brief introduction
+- Optional difficulty preference selection
+- Optional favorite operation category selection
+- Saves initial preferences to config
+- Marks onboarding complete (skipped on subsequent launches)
+- Graceful skip option (use defaults)
+- Smooth transition to main menu after completion
+
+### Phase 10: CLI Commands
 
 Direct access via subcommands: `arithmego play`, `arithmego statistics`, etc.
 
@@ -147,11 +162,11 @@ Includes:
 - `arithmego version` — Show version info
 - Auto-update check on launch (respects `auto_update` config)
 
-### Phase 10: Polish
+### Phase 11: Polish
 
 Edge cases, pause/quit flow, multiple choice input, error handling, terminal resize.
 
-### Phase 11: Distribution
+### Phase 12: Distribution
 
 Install script, GoReleaser config, GitHub Actions, README, LICENSE.
 
