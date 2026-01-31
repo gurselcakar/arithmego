@@ -88,6 +88,11 @@ func Load() (*Statistics, error) {
 		return nil, err
 	}
 
+	// Ensure Sessions is never nil (handles {"sessions": null} in JSON)
+	if stats.Sessions == nil {
+		stats.Sessions = []SessionRecord{}
+	}
+
 	return &stats, nil
 }
 
@@ -104,7 +109,8 @@ func Save(stats *Statistics) error {
 		return err
 	}
 
-	// Write to temp file first for atomic operation
+	// Write to temp file first for atomic operation.
+	// Temp file is created in same directory as target to ensure rename is atomic.
 	dir := filepath.Dir(path)
 	tmp, err := os.CreateTemp(dir, "statistics-*.tmp")
 	if err != nil {
@@ -120,6 +126,11 @@ func Save(stats *Statistics) error {
 		}
 	}()
 
+	// Set restrictive permissions. Note: there's a brief window between CreateTemp
+	// and Chmod where the file has default permissions. This is acceptable because:
+	// 1. The temp file has a random name, making it hard to predict
+	// 2. The window is typically < 1ms
+	// 3. The data is game statistics, not credentials
 	if err := tmp.Chmod(0600); err != nil {
 		_ = tmp.Close()
 		return err
@@ -130,11 +141,18 @@ func Save(stats *Statistics) error {
 		return err
 	}
 
+	// Sync to ensure data is flushed to disk before rename.
+	// Prevents data loss on system crash or power failure.
+	if err := tmp.Sync(); err != nil {
+		_ = tmp.Close()
+		return err
+	}
+
 	if err := tmp.Close(); err != nil {
 		return err
 	}
 
-	// Atomic rename (on most filesystems)
+	// Atomic rename (works because temp file is in same directory as target)
 	if err := os.Rename(tmpPath, path); err != nil {
 		return err
 	}

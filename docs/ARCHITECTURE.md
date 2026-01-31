@@ -41,6 +41,20 @@ Location: `~/.config/arithmego/`
 
 All files are JSON. Human-readable, easy to debug.
 
+### config.json
+
+User preferences with sensible defaults:
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `auto_update` | bool | `true` | Check for updates on launch |
+
+```json
+{
+  "auto_update": true
+}
+```
+
 ---
 
 ## Project Structure

@@ -118,6 +118,10 @@ func (m GameModel) Update(msg tea.Msg) (GameModel, tea.Cmd) {
 		m.tick++ // increment for shimmer animation
 
 		if m.session.IsFinished() {
+			// Stop animation and sync display score before transitioning.
+			// Not returning TickCmd() stops the timer tick loop.
+			m.animating = false
+			m.displayScore = m.session.Score
 			return m, func() tea.Msg {
 				return GameOverMsg{Session: m.session}
 			}

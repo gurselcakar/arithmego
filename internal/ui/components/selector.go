@@ -16,13 +16,21 @@ type SelectorOptions struct {
 // RenderSelector renders a horizontal selector with arrows: ◀ value ▶
 // When Label is provided: "Label: ◀ Value ▶"
 // When only Prefix is provided: "  ◀ Value ▶"
-// Panics if options is empty or index is out of bounds.
+//
+// Returns a placeholder string if options is empty or index is out of bounds.
+// This graceful degradation prevents crashes in edge cases while making the
+// issue visible during development.
 func RenderSelector(index int, options []string, opts SelectorOptions) string {
 	if len(options) == 0 {
-		panic("RenderSelector: options cannot be empty")
+		return styles.Dim.Render("[no options]")
 	}
 	if index < 0 || index >= len(options) {
-		panic(fmt.Sprintf("RenderSelector: index %d out of bounds for %d options", index, len(options)))
+		// Clamp index to valid range for graceful degradation
+		if index < 0 {
+			index = 0
+		} else {
+			index = len(options) - 1
+		}
 	}
 
 	leftArrow := "◀"

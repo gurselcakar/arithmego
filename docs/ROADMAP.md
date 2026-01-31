@@ -130,9 +130,22 @@ Includes:
 
 First-time user experience. Preferences screen. Guided setup flow.
 
+Includes:
+- Config storage (`~/.config/arithmego/config.json`)
+- Auto-update preference (enabled by default, user can disable)
+- Settings screen with toggle controls
+- First-run onboarding flow
+
 ### Phase 9: CLI Commands
 
 Direct access via subcommands: `arithmego play`, `arithmego statistics`, etc.
+
+Includes:
+- `arithmego play` — Quick play with last settings
+- `arithmego statistics` — View stats directly
+- `arithmego update` — Manual update check
+- `arithmego version` — Show version info
+- Auto-update check on launch (respects `auto_update` config)
 
 ### Phase 10: Polish
 

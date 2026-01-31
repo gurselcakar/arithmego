@@ -35,14 +35,22 @@ func (m InputModel) Update(msg tea.Msg) (InputModel, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.Type {
 		case tea.KeyRunes:
-			// Allow numeric input and minus sign at start
+			// Validate input: only digits allowed, except minus sign at the start.
+			// This handles both single keystrokes and pasted text:
+			// - Single keystroke: validates the single rune
+			// - Paste: validates all runes, rejecting entire paste if any invalid
+			//
+			// Edge cases handled:
+			// - "-5" then cursor to start and type "-": rejected (input not empty)
+			// - Paste "--5": rejected at second "-" (i != 0)
+			// - Paste "123": allowed (all digits)
 			for i, r := range msg.Runes {
-				// Allow minus sign only at start of empty input
+				// Allow minus sign only as first character of empty input
 				if r == '-' && i == 0 && m.textInput.Value() == "" {
 					continue
 				}
 				if r < '0' || r > '9' {
-					return m, nil
+					return m, nil // Reject entire input
 				}
 			}
 		}

@@ -19,6 +19,14 @@ func (m *Modulo) Symbol() string         { return "mod" }
 func (m *Modulo) Arity() game.Arity      { return game.Binary }
 func (m *Modulo) Category() game.Category { return game.CategoryAdvanced }
 
+// Apply computes operands[0] mod operands[1].
+//
+// Preconditions:
+//   - operands must have exactly 2 elements (enforced by Arity)
+//   - operands[1] must not be zero
+//
+// Panics if operands[1] is zero. The Generate method guarantees valid operands
+// for game use. Direct callers must validate inputs.
 func (m *Modulo) Apply(operands []int) int {
 	if operands[1] == 0 {
 		panic("modulo by zero")

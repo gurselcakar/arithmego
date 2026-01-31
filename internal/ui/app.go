@@ -162,7 +162,10 @@ func (a *App) updateGame(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	a.gameModel, cmd = a.gameModel.Update(msg)
 
-	// Check for game over
+	// Check for game over.
+	// When this message arrives, the game model has already stopped its timer
+	// and animation loops by not returning TickCmd/ScoreAnimCmd. Any stale
+	// tick messages will be ignored since we transition to ScreenResults.
 	if gom, ok := msg.(screens.GameOverMsg); ok {
 		a.session = gom.Session
 		a.saveSession()
@@ -330,9 +333,14 @@ func (a *App) updateOnboarding(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 // startGame creates a new session and starts the game.
+// If mode is invalid, gracefully returns to the modes screen.
 func (a *App) startGame() (tea.Model, tea.Cmd) {
 	if a.currentMode == nil || len(a.currentMode.Operations) == 0 {
-		panic("startGame: invalid mode state")
+		// Gracefully recover: return to modes screen instead of crashing
+		a.modesModel = screens.NewModes()
+		a.modesModel.SetSize(a.width, a.height)
+		a.screen = ScreenModes
+		return a, a.modesModel.Init()
 	}
 
 	a.session = game.NewSession(a.currentMode.Operations, a.lastDifficulty, a.lastDuration)

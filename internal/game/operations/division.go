@@ -19,6 +19,14 @@ func (d *Division) Symbol() string         { return "÷" }
 func (d *Division) Arity() game.Arity      { return game.Binary }
 func (d *Division) Category() game.Category { return game.CategoryBasic }
 
+// Apply computes operands[0] / operands[1].
+//
+// Preconditions:
+//   - operands must have exactly 2 elements (enforced by Arity)
+//   - operands[1] must not be zero
+//
+// Panics if operands[1] is zero. The Generate method guarantees valid operands
+// for game use. Direct callers must validate inputs.
 func (d *Division) Apply(operands []int) int {
 	if operands[1] == 0 {
 		panic("division by zero")
