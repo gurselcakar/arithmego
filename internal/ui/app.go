@@ -61,8 +61,14 @@ func New() *App {
 		menuModel = screens.NewMenu()
 	}
 
+	// Determine starting screen based on onboarding status
+	startScreen := ScreenMenu
+	if !config.Onboarded {
+		startScreen = ScreenOnboarding
+	}
+
 	return &App{
-		screen:          ScreenMenu,
+		screen:          startScreen,
 		menuModel:       menuModel,
 		modesModel:      screens.NewModes(),
 		practiceModel:   screens.NewPractice(),
@@ -324,12 +330,42 @@ func (a *App) updateOnboarding(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	a.onboardingModel, cmd = a.onboardingModel.Update(msg)
 
-	if _, ok := msg.(screens.ReturnToMenuMsg); ok {
-		a.screen = ScreenMenu
-		return a, nil
+	// Handle onboarding completion with user selections
+	if completeMsg, ok := msg.(screens.OnboardingCompleteMsg); ok {
+		return a.completeOnboarding(completeMsg.ModeID, completeMsg.Difficulty, completeMsg.DurationMs)
+	}
+
+	// Handle onboarding skip - use defaults (Easy, 60s, Addition)
+	if _, ok := msg.(screens.OnboardingSkipMsg); ok {
+		return a.completeOnboarding(modes.IDAdditionSprint, "Easy", 60000)
 	}
 
 	return a, cmd
+}
+
+// completeOnboarding finishes onboarding and starts the game with selected settings.
+func (a *App) completeOnboarding(modeID, difficulty string, durationMs int64) (tea.Model, tea.Cmd) {
+	// Mark as onboarded
+	a.config.Onboarded = true
+
+	// Set last played and default settings
+	a.config.LastPlayedModeID = modeID
+	a.config.LastPlayedDifficulty = difficulty
+	a.config.LastPlayedDurationMs = durationMs
+	a.config.DefaultDifficulty = difficulty
+	a.config.DefaultDurationMs = durationMs
+
+	// Save config (ignore errors - config is non-critical)
+	_ = storage.SaveConfig(a.config)
+
+	// Set up game state
+	mode, _ := modes.Get(modeID)
+	a.currentMode = mode
+	a.lastDifficulty = game.ParseDifficulty(difficulty)
+	a.lastDuration = time.Duration(durationMs) * time.Millisecond
+
+	// Start the game
+	return a.startGame()
 }
 
 // startGame creates a new session and starts the game.

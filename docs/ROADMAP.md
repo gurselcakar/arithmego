@@ -17,7 +17,7 @@ Development phases for ArithmeGo.
 | 6 | Quick Play | Complete |
 | 7 | Practice Mode | Complete |
 | 8 | Settings | Complete |
-| 9 | Onboarding | Planned |
+| 9 | Onboarding | Complete |
 | 10 | CLI Commands | Planned |
 | 11 | Polish | Planned |
 | 12 | Distribution | Planned |
@@ -139,17 +139,20 @@ Includes:
 
 ### Phase 9: Onboarding
 
-First-time user experience. Guided setup flow for new users.
+First-time user experience. 5-screen guided setup that launches directly into first game.
 
 Includes:
-- First-run detection (config file presence or `onboarded` flag)
-- Welcome screen with logo and brief introduction
-- Optional difficulty preference selection
-- Optional favorite operation category selection
-- Saves initial preferences to config
-- Marks onboarding complete (skipped on subsequent launches)
-- Graceful skip option (use defaults)
-- Smooth transition to main menu after completion
+- First-run detection via `onboarded` flag in config
+- Welcome screen with logo, tagline, and introduction
+- Duration selection (30s, 60s, 90s, 2min)
+- Difficulty selection (Beginner, Easy, Medium, Hard, Expert)
+- Operation selection (Addition, Subtraction, Multiplication, Division, Mixed)
+- Input mode screen (Typing only, Multiple Choice placeholder)
+- Progress dots indicator (● ● ○ ○ ○)
+- Navigation: Enter (continue), S (skip), B (back)
+- Skip uses sensible defaults (Easy, 60s, Addition)
+- Completion saves preferences and launches game immediately
+- Subsequent launches go directly to main menu
 
 ### Phase 10: CLI Commands
 

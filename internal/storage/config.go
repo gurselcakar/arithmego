@@ -8,13 +8,16 @@ import (
 
 // Default values for new configurations.
 const (
-	DefaultDifficulty   = "Normal"
+	DefaultDifficulty   = "Easy"
 	DefaultDurationMs   = 60000 // 60 seconds
 	DefaultAutoUpdate   = true
 )
 
 // Config stores user preferences and Quick Play state.
 type Config struct {
+	// First-run state
+	Onboarded bool `json:"onboarded,omitempty"`
+
 	// Defaults (applied to Launch screen)
 	DefaultDifficulty string `json:"default_difficulty,omitempty"`
 	DefaultDurationMs int64  `json:"default_duration_ms,omitempty"`
