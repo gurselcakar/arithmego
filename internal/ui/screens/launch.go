@@ -20,14 +20,16 @@ type LaunchField int
 const (
 	FieldDifficulty LaunchField = iota
 	FieldDuration
+	FieldInputMethod
 	FieldStart
 )
 
 // StartGameMsg is sent when the user starts the game.
 type StartGameMsg struct {
-	Mode       *modes.Mode
-	Difficulty game.Difficulty
-	Duration   time.Duration
+	Mode        *modes.Mode
+	Difficulty  game.Difficulty
+	Duration    time.Duration
+	InputMethod components.InputMethod
 }
 
 // LaunchModel represents the launch screen.
@@ -35,8 +37,9 @@ type LaunchModel struct {
 	mode *modes.Mode
 
 	// Settings
-	difficultyIndex int
-	durationIndex   int
+	difficultyIndex  int
+	durationIndex    int
+	inputMethodIndex int
 
 	// UI state
 	focusedField LaunchField
@@ -47,12 +50,15 @@ type LaunchModel struct {
 // NewLaunch creates a new launch model for the given mode.
 // If config is provided, uses config defaults; otherwise uses mode defaults.
 func NewLaunch(mode *modes.Mode, config *storage.Config) LaunchModel {
-	var diffIdx, durIdx int
+	var diffIdx, durIdx, inputIdx int
 
 	if config != nil && config.DefaultDifficulty != "" {
 		// Use config defaults
 		diffIdx = findLaunchDifficultyIndex(config.DefaultDifficulty)
 		durIdx = modes.FindDurationIndex(time.Duration(config.DefaultDurationMs) * time.Millisecond)
+		if config.InputMethod == "multiple_choice" {
+			inputIdx = 1
+		}
 	} else {
 		// Fall back to mode defaults
 		for i, d := range game.AllDifficulties() {
@@ -65,10 +71,11 @@ func NewLaunch(mode *modes.Mode, config *storage.Config) LaunchModel {
 	}
 
 	return LaunchModel{
-		mode:            mode,
-		difficultyIndex: diffIdx,
-		durationIndex:   durIdx,
-		focusedField:    FieldDifficulty,
+		mode:             mode,
+		difficultyIndex:  diffIdx,
+		durationIndex:    durIdx,
+		inputMethodIndex: inputIdx,
+		focusedField:     FieldDifficulty,
 	}
 }
 
@@ -162,6 +169,13 @@ func (m *LaunchModel) adjustValue(delta int) {
 		if m.durationIndex >= len(durs) {
 			m.durationIndex = len(durs) - 1
 		}
+	case FieldInputMethod:
+		// Toggle between 0 and 1
+		if m.inputMethodIndex == 0 {
+			m.inputMethodIndex = 1
+		} else {
+			m.inputMethodIndex = 0
+		}
 	}
 }
 
@@ -170,11 +184,17 @@ func (m LaunchModel) startGame() tea.Cmd {
 	diffs := game.AllDifficulties()
 	durs := modes.AllowedDurations
 
+	var inputMethod components.InputMethod
+	if m.inputMethodIndex == 1 {
+		inputMethod = components.InputMultipleChoice
+	}
+
 	return func() tea.Msg {
 		return StartGameMsg{
-			Mode:       m.mode,
-			Difficulty: diffs[m.difficultyIndex],
-			Duration:   durs[m.durationIndex].Value,
+			Mode:        m.mode,
+			Difficulty:  diffs[m.difficultyIndex],
+			Duration:    durs[m.durationIndex].Value,
+			InputMethod: inputMethod,
 		}
 	}
 }
@@ -193,6 +213,7 @@ func (m LaunchModel) View() string {
 
 	difficultyRow := m.renderSelector("Difficulty", m.difficultyIndex, diffNames(diffs), m.focusedField == FieldDifficulty)
 	durationRow := m.renderSelector("Duration", m.durationIndex, durNames(durs), m.focusedField == FieldDuration)
+	inputMethodRow := m.renderSelector("Input", m.inputMethodIndex, []string{"Typing", "Multiple Choice"}, m.focusedField == FieldInputMethod)
 
 	// Start button
 	startStyle := styles.Unselected
@@ -215,6 +236,8 @@ func (m LaunchModel) View() string {
 		difficultyRow,
 		"",
 		durationRow,
+		"",
+		inputMethodRow,
 		"",
 		"",
 		startButton,

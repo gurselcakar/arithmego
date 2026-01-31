@@ -8,6 +8,7 @@ import (
 	"github.com/gurselcakar/arithmego/internal/game"
 	"github.com/gurselcakar/arithmego/internal/modes"
 	"github.com/gurselcakar/arithmego/internal/storage"
+	"github.com/gurselcakar/arithmego/internal/ui/components"
 	"github.com/gurselcakar/arithmego/internal/ui/screens"
 	"github.com/gurselcakar/arithmego/internal/update"
 )
@@ -31,10 +32,11 @@ type App struct {
 	onboardingModel screens.OnboardingModel
 
 	// Current session state
-	session        *game.Session
-	currentMode    *modes.Mode
-	lastDifficulty game.Difficulty
-	lastDuration   time.Duration
+	session         *game.Session
+	currentMode     *modes.Mode
+	lastDifficulty  game.Difficulty
+	lastDuration    time.Duration
+	lastInputMethod components.InputMethod
 
 	// User config (for Quick Play and defaults)
 	config *storage.Config
@@ -355,6 +357,7 @@ func (a *App) updateLaunch(msg tea.Msg) (tea.Model, tea.Cmd) {
 		a.currentMode = startMsg.Mode
 		a.lastDifficulty = startMsg.Difficulty
 		a.lastDuration = startMsg.Duration
+		a.lastInputMethod = startMsg.InputMethod
 		return a.startGame()
 	}
 
@@ -418,19 +421,19 @@ func (a *App) updateOnboarding(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	// Handle onboarding completion with user selections
 	if completeMsg, ok := msg.(screens.OnboardingCompleteMsg); ok {
-		return a.completeOnboarding(completeMsg.ModeID, completeMsg.Difficulty, completeMsg.DurationMs)
+		return a.completeOnboarding(completeMsg.ModeID, completeMsg.Difficulty, completeMsg.DurationMs, completeMsg.InputMethod)
 	}
 
-	// Handle onboarding skip - use defaults (Easy, 60s, Addition)
+	// Handle onboarding skip - use defaults (Easy, 60s, Addition, Typing)
 	if _, ok := msg.(screens.OnboardingSkipMsg); ok {
-		return a.completeOnboarding(modes.IDAdditionSprint, "Easy", 60000)
+		return a.completeOnboarding(modes.IDAdditionSprint, "Easy", 60000, "typing")
 	}
 
 	return a, cmd
 }
 
 // completeOnboarding finishes onboarding and starts the game with selected settings.
-func (a *App) completeOnboarding(modeID, difficulty string, durationMs int64) (tea.Model, tea.Cmd) {
+func (a *App) completeOnboarding(modeID, difficulty string, durationMs int64, inputMethod string) (tea.Model, tea.Cmd) {
 	// Mark as onboarded
 	a.config.Onboarded = true
 
@@ -440,6 +443,7 @@ func (a *App) completeOnboarding(modeID, difficulty string, durationMs int64) (t
 	a.config.LastPlayedDurationMs = durationMs
 	a.config.DefaultDifficulty = difficulty
 	a.config.DefaultDurationMs = durationMs
+	a.config.InputMethod = inputMethod
 
 	// Save config (ignore errors - config is non-critical)
 	_ = storage.SaveConfig(a.config)
@@ -456,6 +460,7 @@ func (a *App) completeOnboarding(modeID, difficulty string, durationMs int64) (t
 	a.currentMode = mode
 	a.lastDifficulty = game.ParseDifficulty(difficulty)
 	a.lastDuration = time.Duration(durationMs) * time.Millisecond
+	a.lastInputMethod = components.ParseInputMethod(inputMethod)
 
 	// Start the game
 	return a.startGame()
@@ -473,7 +478,7 @@ func (a *App) startGame() (tea.Model, tea.Cmd) {
 	}
 
 	a.session = game.NewSession(a.currentMode.Operations, a.lastDifficulty, a.lastDuration)
-	a.gameModel = screens.NewGame(a.session)
+	a.gameModel = screens.NewGame(a.session, a.lastInputMethod)
 	a.gameModel.SetSize(a.width, a.height)
 	a.screen = ScreenGame
 	return a, a.gameModel.Init()
@@ -493,6 +498,7 @@ func (a *App) startQuickPlay() (tea.Model, tea.Cmd) {
 	a.currentMode = mode
 	a.lastDifficulty = game.ParseDifficulty(a.config.LastPlayedDifficulty)
 	a.lastDuration = time.Duration(a.config.LastPlayedDurationMs) * time.Millisecond
+	a.lastInputMethod = components.ParseInputMethod(a.config.InputMethod)
 
 	return a.startGame()
 }
@@ -510,6 +516,11 @@ func (a *App) saveLastPlayed() {
 	a.config.LastPlayedModeID = a.currentMode.ID
 	a.config.LastPlayedDifficulty = a.lastDifficulty.String()
 	a.config.LastPlayedDurationMs = a.lastDuration.Milliseconds()
+	if a.lastInputMethod == components.InputMultipleChoice {
+		a.config.InputMethod = "multiple_choice"
+	} else {
+		a.config.InputMethod = "typing"
+	}
 
 	// Ignore save errors - config is non-critical
 	_ = storage.SaveConfig(a.config)

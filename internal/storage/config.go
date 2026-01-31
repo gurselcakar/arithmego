@@ -28,7 +28,8 @@ type Config struct {
 	LastPlayedDurationMs int64  `json:"last_played_duration_ms,omitempty"`
 
 	// Preferences
-	AutoUpdate bool `json:"auto_update"`
+	AutoUpdate  bool   `json:"auto_update"`
+	InputMethod string `json:"input_method,omitempty"` // "typing" or "multiple_choice"
 }
 
 // NewConfig creates a new Config with default values.

@@ -19,21 +19,23 @@ type SettingsField int
 const (
 	SettingsFieldDifficulty SettingsField = iota
 	SettingsFieldDuration
+	SettingsFieldInputMethod
 	SettingsFieldAutoUpdate
 )
 
-const settingsFieldCount = 3
+const settingsFieldCount = 4
 
 // SettingsModel represents the settings screen.
 type SettingsModel struct {
 	config *storage.Config
 
 	// UI state
-	focusedField    SettingsField
-	difficultyIndex int
-	durationIndex   int
-	width           int
-	height          int
+	focusedField     SettingsField
+	difficultyIndex  int
+	durationIndex    int
+	inputMethodIndex int
+	width            int
+	height           int
 }
 
 // NewSettings creates a new settings model.
@@ -45,12 +47,17 @@ func NewSettings(config *storage.Config) SettingsModel {
 	// Find indices for current values
 	diffIdx := findDifficultyIndex(config.DefaultDifficulty)
 	durIdx := findDurationIndexByMs(config.DefaultDurationMs)
+	inputIdx := 0
+	if config.InputMethod == "multiple_choice" {
+		inputIdx = 1
+	}
 
 	return SettingsModel{
-		config:          config,
-		difficultyIndex: diffIdx,
-		durationIndex:   durIdx,
-		focusedField:    SettingsFieldDifficulty,
+		config:           config,
+		difficultyIndex:  diffIdx,
+		durationIndex:    durIdx,
+		inputMethodIndex: inputIdx,
+		focusedField:     SettingsFieldDifficulty,
 	}
 }
 
@@ -132,9 +139,24 @@ func (m *SettingsModel) adjustValue(delta int) {
 		m.config.DefaultDurationMs = durs[m.durationIndex].Value.Milliseconds()
 		m.saveConfig()
 
+	case SettingsFieldInputMethod:
+		m.toggleInputMethod()
+
 	case SettingsFieldAutoUpdate:
 		m.toggleAutoUpdate()
 	}
+}
+
+// toggleInputMethod switches between typing and multiple choice modes.
+func (m *SettingsModel) toggleInputMethod() {
+	if m.inputMethodIndex == 0 {
+		m.inputMethodIndex = 1
+		m.config.InputMethod = "multiple_choice"
+	} else {
+		m.inputMethodIndex = 0
+		m.config.InputMethod = "typing"
+	}
+	m.saveConfig()
 }
 
 // toggleAutoUpdate toggles the auto-update preference.
@@ -174,6 +196,11 @@ func (m SettingsModel) View() string {
 		Focused: m.focusedField == SettingsFieldDuration,
 	})
 
+	inputMethodRow := components.RenderSelector(m.inputMethodIndex, []string{"Typing", "Multiple Choice"}, components.SelectorOptions{
+		Label:   "Input",
+		Focused: m.focusedField == SettingsFieldInputMethod,
+	})
+
 	// Preferences section
 	preferencesHeader := styles.Bold.Render("PREFERENCES")
 
@@ -196,6 +223,8 @@ func (m SettingsModel) View() string {
 		difficultyRow,
 		"",
 		durationRow,
+		"",
+		inputMethodRow,
 		"",
 		separator,
 		"",

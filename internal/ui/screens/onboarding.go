@@ -24,9 +24,10 @@ const totalSteps = 5
 
 // OnboardingCompleteMsg is sent when onboarding is completed with selections.
 type OnboardingCompleteMsg struct {
-	ModeID     string
-	Difficulty string
-	DurationMs int64
+	ModeID      string
+	Difficulty  string
+	DurationMs  int64
+	InputMethod string // "typing" or "multiple_choice"
 }
 
 // OnboardingSkipMsg is sent when the user skips onboarding.
@@ -69,6 +70,7 @@ var operationOptions = []operationOption{
 
 var inputModeOptions = []string{
 	"Typing",
+	"Multiple Choice",
 }
 
 // OnboardingModel represents the onboarding screen.
@@ -209,11 +211,17 @@ func (m OnboardingModel) skip() (OnboardingModel, tea.Cmd) {
 
 // complete returns the completion message with user selections.
 func (m OnboardingModel) complete() tea.Cmd {
+	inputMethod := "typing"
+	if m.inputModeIndex == 1 {
+		inputMethod = "multiple_choice"
+	}
+
 	return func() tea.Msg {
 		return OnboardingCompleteMsg{
-			ModeID:     operationOptions[m.operationIndex].ModeID,
-			Difficulty: difficultyOptions[m.difficultyIndex],
-			DurationMs: durationOptions[m.durationIndex].DurationMs,
+			ModeID:      operationOptions[m.operationIndex].ModeID,
+			Difficulty:  difficultyOptions[m.difficultyIndex],
+			DurationMs:  durationOptions[m.durationIndex].DurationMs,
+			InputMethod: inputMethod,
 		}
 	}
 }
@@ -375,6 +383,8 @@ func (m OnboardingModel) viewInputMode() string {
 		label := opt
 		if opt == "Typing" {
 			label = opt + " - Type your answers"
+		} else if opt == "Multiple Choice" {
+			label = opt + " - Select from options"
 		}
 		if i == m.cursor {
 			options = append(options, styles.Selected.Render("> "+label))
@@ -385,9 +395,6 @@ func (m OnboardingModel) viewInputMode() string {
 
 	optionsList := lipgloss.JoinVertical(lipgloss.Left, options...)
 
-	// Note about multiple choice
-	note := styles.Dim.Render("Multiple choice coming soon!")
-
 	progress := styles.Dim.Render(components.ProgressDots(5, totalSteps))
 	hints := components.RenderHints([]string{"↑↓ Navigate", "Enter Start Game", "S Skip", "B Back"})
 
@@ -397,8 +404,6 @@ func (m OnboardingModel) viewInputMode() string {
 		"",
 		"",
 		optionsList,
-		"",
-		note,
 		"",
 		"",
 		progress,

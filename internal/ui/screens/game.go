@@ -39,6 +39,10 @@ type GameModel struct {
 	width   int
 	height  int
 
+	// Input method
+	inputMethod components.InputMethod
+	choices     components.ChoicesModel
+
 	// Visual feedback state
 	feedback       string    // "correct", "incorrect", or ""
 	feedbackExpiry time.Time // when feedback should clear
@@ -55,13 +59,15 @@ type GameModel struct {
 	animating    bool // whether score animation is in progress
 }
 
-// NewGame creates a new game model with the given session.
+// NewGame creates a new game model with the given session and input method.
 // Note: displayScore starts at 0 to match session's initial score.
 // The rendering logic handles any sync issues via fallback to session.Score.
-func NewGame(session *game.Session) GameModel {
+func NewGame(session *game.Session, inputMethod components.InputMethod) GameModel {
 	return GameModel{
 		session:      session,
 		input:        components.NewInput(),
+		inputMethod:  inputMethod,
+		choices:      components.NewChoices(),
 		displayScore: 0, // Explicit: matches session.Score after Start()
 	}
 }
@@ -69,6 +75,13 @@ func NewGame(session *game.Session) GameModel {
 // Init initializes the game and starts the timer.
 func (m GameModel) Init() tea.Cmd {
 	m.session.Start()
+
+	// Generate choices if in multiple choice mode
+	if m.inputMethod == components.InputMultipleChoice && m.session.Current != nil {
+		choices, correctIndex := game.GenerateChoices(m.session.Current.Answer, m.session.Difficulty)
+		m.choices.SetChoices(choices, correctIndex)
+	}
+
 	return tea.Batch(
 		m.input.Init(),
 		TickCmd(),
@@ -112,6 +125,10 @@ func (m GameModel) Update(msg tea.Msg) (GameModel, tea.Cmd) {
 		m.width = msg.Width
 		m.height = msg.Height
 		return m, nil
+
+	case components.ChoiceSelectedMsg:
+		// Auto-submit on choice selection (multiple choice mode)
+		return m.submitAnswerValue(msg.Value)
 
 	case tickMsg:
 		m.session.Tick()
@@ -180,7 +197,10 @@ func (m GameModel) Update(msg tea.Msg) (GameModel, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "enter":
-			return m.submitAnswer()
+			if m.inputMethod == components.InputTyping {
+				return m.submitAnswer()
+			}
+			return m, nil
 		case "s", " ":
 			return m.skipQuestion()
 		case "p", "esc":
@@ -188,7 +208,13 @@ func (m GameModel) Update(msg tea.Msg) (GameModel, tea.Cmd) {
 				return PauseMsg{Session: m.session}
 			}
 		default:
-			// Pass to input
+			// Route to appropriate input component
+			if m.inputMethod == components.InputMultipleChoice {
+				var cmd tea.Cmd
+				m.choices, cmd = m.choices.Update(msg)
+				return m, cmd
+			}
+			// Pass to text input
 			var cmd tea.Cmd
 			m.input, cmd = m.input.Update(msg)
 			return m, cmd
@@ -212,8 +238,17 @@ func (m GameModel) submitAnswer() (GameModel, tea.Cmd) {
 		return m, nil // Safety net for edge cases like "-" only
 	}
 
+	return m.submitAnswerValue(answer)
+}
+
+// submitAnswerValue submits an answer and handles feedback/animation.
+// Used by both typing mode (via submitAnswer) and multiple choice mode.
+func (m GameModel) submitAnswerValue(answer int) (GameModel, tea.Cmd) {
 	correct := m.session.SubmitAnswer(answer)
+
+	// Reset input components
 	m.input.Reset()
+	m.choices.Reset()
 
 	// Set feedback
 	if correct {
@@ -251,6 +286,12 @@ func (m GameModel) submitAnswer() (GameModel, tea.Cmd) {
 		}
 	}
 
+	// Generate new choices for the next question
+	if m.inputMethod == components.InputMultipleChoice && m.session.Current != nil {
+		choices, correctIndex := game.GenerateChoices(m.session.Current.Answer, m.session.Difficulty)
+		m.choices.SetChoices(choices, correctIndex)
+	}
+
 	return m, cmd
 }
 
@@ -258,6 +299,7 @@ func (m GameModel) submitAnswer() (GameModel, tea.Cmd) {
 func (m GameModel) skipQuestion() (GameModel, tea.Cmd) {
 	m.session.Skip()
 	m.input.Reset()
+	m.choices.Reset()
 	m.feedback = ""
 	m.feedbackExpiry = time.Time{}
 	m.scoreDelta = 0
@@ -265,6 +307,13 @@ func (m GameModel) skipQuestion() (GameModel, tea.Cmd) {
 	// Sync animation state (skip doesn't change score, but stop any in-progress animation)
 	m.animating = false
 	m.displayScore = m.session.Score
+
+	// Generate new choices for the next question
+	if m.inputMethod == components.InputMultipleChoice && m.session.Current != nil {
+		choices, correctIndex := game.GenerateChoices(m.session.Current.Answer, m.session.Difficulty)
+		m.choices.SetChoices(choices, correctIndex)
+	}
+
 	return m, nil
 }
 
@@ -287,7 +336,12 @@ func (m GameModel) View() string {
 	}
 
 	// Apply feedback styling to input area
-	inputView := m.input.View()
+	var inputView string
+	if m.inputMethod == components.InputMultipleChoice {
+		inputView = m.choices.View()
+	} else {
+		inputView = m.input.View()
+	}
 	switch m.feedback {
 	case "correct":
 		inputView = styles.Correct.Render(inputView)
@@ -295,8 +349,13 @@ func (m GameModel) View() string {
 		inputView = styles.Incorrect.Render(inputView)
 	}
 
-	// Hints
-	hints := components.RenderHints([]string{"[S] Skip", "[P] Pause"})
+	// Hints - differ based on input method
+	var hints string
+	if m.inputMethod == components.InputMultipleChoice {
+		hints = components.RenderHints([]string{"[1-4] Select", "[S] Skip", "[P] Pause"})
+	} else {
+		hints = components.RenderHints([]string{"[S] Skip", "[P] Pause"})
+	}
 
 	// Center content (milestone is now shown above score in top row)
 	centerContent := lipgloss.JoinVertical(lipgloss.Center,

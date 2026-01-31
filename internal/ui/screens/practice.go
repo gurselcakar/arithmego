@@ -18,25 +18,6 @@ import (
 // Feedback duration for correct/incorrect flash
 const practiceFeedbackDuration = 400 * time.Millisecond
 
-// InputMethod represents the answer input type.
-type InputMethod int
-
-const (
-	InputTyping InputMethod = iota
-	InputMultipleChoice
-)
-
-func (m InputMethod) String() string {
-	switch m {
-	case InputTyping:
-		return "Typing"
-	case InputMultipleChoice:
-		return "Multiple Choice"
-	default:
-		return "Unknown"
-	}
-}
-
 // PracticeSettingsField identifies which field is focused in the settings panel.
 type PracticeSettingsField int
 
@@ -77,11 +58,12 @@ type PracticeModel struct {
 	difficultyIdx int
 
 	// Input method
-	inputMethod InputMethod
+	inputMethod components.InputMethod
 
 	// Question state
 	current *game.Question
 	input   components.InputModel
+	choices components.ChoicesModel
 
 	// Feedback state
 	feedback       string    // "correct", "incorrect", or ""
@@ -94,8 +76,9 @@ func NewPractice() PracticeModel {
 		settingsField:   PracticeFieldOperation,
 		difficulty:      game.Medium,
 		difficultyIdx:   2, // Medium is index 2
-		inputMethod:     InputTyping,
+		inputMethod:     components.InputTyping,
 		input:           components.NewInput(),
+		choices:         components.NewChoices(),
 		categoryIndices: make(map[game.Category]int),
 	}
 
@@ -208,6 +191,10 @@ func (m PracticeModel) Update(msg tea.Msg) (PracticeModel, tea.Cmd) {
 		}
 		return m, nil
 
+	case components.ChoiceSelectedMsg:
+		// Auto-submit on choice selection (multiple choice mode)
+		return m.submitAnswerValue(msg.Value)
+
 	case tea.KeyMsg:
 		// Global keys that work regardless of settings panel state
 		switch msg.String() {
@@ -238,6 +225,7 @@ func (m PracticeModel) updatePractice(msg tea.KeyMsg) (PracticeModel, tea.Cmd) {
 	case "tab":
 		m.settingsOpen = true
 		m.input.Blur()
+		m.choices.Blur()
 		return m, nil
 
 	case "up", "k":
@@ -250,24 +238,30 @@ func (m PracticeModel) updatePractice(msg tea.KeyMsg) (PracticeModel, tea.Cmd) {
 		m.generateQuestion()
 		return m, nil
 
-	case "1":
-		m.selectOperationByName("Addition")
-		return m, nil
-
-	case "2":
-		m.selectOperationByName("Subtraction")
-		return m, nil
-
-	case "3":
-		m.selectOperationByName("Multiplication")
-		return m, nil
-
-	case "4":
-		m.selectOperationByName("Division")
+	case "1", "2", "3", "4":
+		if m.inputMethod == components.InputMultipleChoice {
+			// Route to choices component for answer selection
+			var cmd tea.Cmd
+			m.choices, cmd = m.choices.Update(msg)
+			return m, cmd
+		}
+		// Typing mode: use as operation shortcuts
+		switch msg.String() {
+		case "1":
+			m.selectOperationByName("Addition")
+		case "2":
+			m.selectOperationByName("Subtraction")
+		case "3":
+			m.selectOperationByName("Multiplication")
+		case "4":
+			m.selectOperationByName("Division")
+		}
 		return m, nil
 
 	case "0", "m":
-		m.selectMixedBasic()
+		if m.inputMethod == components.InputTyping {
+			m.selectMixedBasic()
+		}
 		return m, nil
 
 	case "s", " ":
@@ -275,13 +269,19 @@ func (m PracticeModel) updatePractice(msg tea.KeyMsg) (PracticeModel, tea.Cmd) {
 		return m, nil
 
 	case "enter":
-		return m.submitAnswer()
+		if m.inputMethod == components.InputTyping {
+			return m.submitAnswer()
+		}
+		return m, nil
 
 	default:
-		// Pass to input component
-		var cmd tea.Cmd
-		m.input, cmd = m.input.Update(msg)
-		return m, cmd
+		if m.inputMethod == components.InputTyping {
+			// Pass to text input component
+			var cmd tea.Cmd
+			m.input, cmd = m.input.Update(msg)
+			return m, cmd
+		}
+		return m, nil
 	}
 }
 
@@ -326,8 +326,7 @@ func (m PracticeModel) updateSettingsPanel(msg tea.KeyMsg) (PracticeModel, tea.C
 		case PracticeFieldDifficulty:
 			m.adjustDifficulty(-1)
 		case PracticeFieldInputMethod:
-			// TODO: Enable when multiple choice is implemented (Phase 10)
-			// For now, input method is locked to Typing
+			m.toggleInputMethod()
 		}
 		return m, nil
 
@@ -336,8 +335,7 @@ func (m PracticeModel) updateSettingsPanel(msg tea.KeyMsg) (PracticeModel, tea.C
 		case PracticeFieldDifficulty:
 			m.adjustDifficulty(1)
 		case PracticeFieldInputMethod:
-			// TODO: Enable when multiple choice is implemented (Phase 10)
-			// For now, input method is locked to Typing
+			m.toggleInputMethod()
 		}
 		return m, nil
 	}
@@ -421,6 +419,27 @@ func (m *PracticeModel) generateQuestion() {
 	q := game.GenerateQuestion(ops, m.difficulty)
 	m.current = &q
 	m.input.Reset()
+	m.choices.Reset()
+
+	// Generate choices if in multiple choice mode
+	if m.inputMethod == components.InputMultipleChoice {
+		choices, correctIndex := game.GenerateChoices(q.Answer, m.difficulty)
+		m.choices.SetChoices(choices, correctIndex)
+	}
+}
+
+// toggleInputMethod switches between typing and multiple choice modes.
+func (m *PracticeModel) toggleInputMethod() {
+	if m.inputMethod == components.InputTyping {
+		m.inputMethod = components.InputMultipleChoice
+		// Generate choices for current question
+		if m.current != nil {
+			choices, correctIndex := game.GenerateChoices(m.current.Answer, m.difficulty)
+			m.choices.SetChoices(choices, correctIndex)
+		}
+	} else {
+		m.inputMethod = components.InputTyping
+	}
 }
 
 // submitAnswer checks the answer and generates a new question.
@@ -435,6 +454,12 @@ func (m PracticeModel) submitAnswer() (PracticeModel, tea.Cmd) {
 		return m, nil
 	}
 
+	return m.submitAnswerValue(answer)
+}
+
+// submitAnswerValue submits an answer and handles feedback.
+// Used by both typing mode and multiple choice mode.
+func (m PracticeModel) submitAnswerValue(answer int) (PracticeModel, tea.Cmd) {
 	if m.current == nil {
 		return m, nil
 	}
@@ -445,9 +470,6 @@ func (m PracticeModel) submitAnswer() (PracticeModel, tea.Cmd) {
 		m.feedback = "correct"
 	} else {
 		m.feedback = "incorrect"
-		// TODO: Consider showing the correct answer here.
-		// For now, we just flash red and move on.
-		// The correct answer was: m.current.Answer
 	}
 	m.feedbackExpiry = time.Now().Add(practiceFeedbackDuration)
 
@@ -491,7 +513,12 @@ func (m PracticeModel) viewClean() string {
 	}
 
 	// Input with feedback styling
-	inputView := m.input.View()
+	var inputView string
+	if m.inputMethod == components.InputMultipleChoice {
+		inputView = m.choices.View()
+	} else {
+		inputView = m.input.View()
+	}
 	switch m.feedback {
 	case "correct":
 		inputView = styles.Correct.Render(inputView)
@@ -506,9 +533,14 @@ func (m PracticeModel) viewClean() string {
 		inputView,
 	)
 
-	// Bottom bar
+	// Bottom bar - hints differ based on input mode
 	separator := styles.Dim.Render(strings.Repeat("─", min(m.width-4, 78)))
-	hints := components.RenderHints([]string{"Tab Settings", "↑↓ Difficulty", "1-4 Operation", "S Skip", "Q Quit"})
+	var hints string
+	if m.inputMethod == components.InputMultipleChoice {
+		hints = components.RenderHints([]string{"Tab Settings", "↑↓ Difficulty", "[1-4] Select", "S Skip", "Q Quit"})
+	} else {
+		hints = components.RenderHints([]string{"Tab Settings", "↑↓ Difficulty", "1-4 Operation", "S Skip", "Q Quit"})
+	}
 	bottomBar := lipgloss.JoinVertical(lipgloss.Center, separator, hints)
 
 	// Layout
@@ -576,7 +608,12 @@ func (m PracticeModel) viewWithSettingsPanel() string {
 	}
 
 	// Input (dimmed when settings open)
-	inputView := styles.Dim.Render(m.input.View())
+	var inputView string
+	if m.inputMethod == components.InputMultipleChoice {
+		inputView = styles.Dim.Render(m.choices.View())
+	} else {
+		inputView = styles.Dim.Render(m.input.View())
+	}
 
 	centerContent := lipgloss.JoinVertical(lipgloss.Center,
 		questionView,
@@ -705,11 +742,15 @@ func (m PracticeModel) renderSettingsPanel() string {
 	}
 	b.WriteString(inputSectionStyle.Render("Input Method"))
 	b.WriteString("\n")
-	// TODO: Enable input method selection when multiple choice is implemented (Phase 10)
-	// Currently locked to "Typing"
-	b.WriteString(styles.Dim.Render("  Typing"))
-	b.WriteString("\n")
-	b.WriteString(styles.Dim.Render("  (Multiple choice coming soon)"))
+	inputMethodIdx := 0
+	if m.inputMethod == components.InputMultipleChoice {
+		inputMethodIdx = 1
+	}
+	b.WriteString(m.renderHorizontalSelector(
+		inputMethodIdx,
+		[]string{"Typing", "Multiple Choice"},
+		m.settingsField == PracticeFieldInputMethod,
+	))
 
 	return b.String()
 }
