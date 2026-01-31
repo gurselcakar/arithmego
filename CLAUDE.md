@@ -2,7 +2,7 @@
 
 Command-line arithmetic game for developers. Built with Go, Bubble Tea, and Cobra.
 
-**Status:** Phase 9 complete (Onboarding)
+**Status:** Phase 10 complete (CLI Commands)
 
 ## Docs
 
@@ -15,10 +15,21 @@ For detailed specs and session logs, see `.local/` (gitignored).
 ## Commands
 
 ```bash
-make build    # Build for current platform
-make run      # Build and run
-make test     # Run tests
-make lint     # Run linter
+make build          # Build for current platform
+make build-release  # Build with version info (for releases)
+make run            # Build and run
+make test           # Run tests
+make lint           # Run linter
+```
+
+## CLI
+
+```bash
+arithmego            # Open main menu (TUI)
+arithmego play       # Quick play with last settings
+arithmego statistics # View stats directly
+arithmego update     # Check for updates
+arithmego version    # Show version info
 ```
 
 ## Code Style

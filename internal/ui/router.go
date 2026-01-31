@@ -13,9 +13,19 @@ const (
 	ScreenPractice   // Phase 7
 	ScreenStatistics // Phase 5
 	ScreenSettings   // Phase 8
-	ScreenOnboarding // Phase 8
+	ScreenOnboarding // Phase 9
 )
 
-// Phase 3: Add mode selection state
-// Phase 6: Add Quick Play logic
-// Phase 8: Add first-run detection for onboarding
+// StartMode determines how the app should start (used by CLI commands).
+type StartMode int
+
+const (
+	// StartModeMenu starts at the main menu (default behavior).
+	StartModeMenu StartMode = iota
+	// StartModeQuickPlay starts a quick play session immediately.
+	StartModeQuickPlay
+	// StartModeStatistics opens the statistics screen directly.
+	StartModeStatistics
+	// StartModeOnboarding starts the onboarding flow.
+	StartModeOnboarding
+)

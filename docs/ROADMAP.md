@@ -18,7 +18,7 @@ Development phases for ArithmeGo.
 | 7 | Practice Mode | Complete |
 | 8 | Settings | Complete |
 | 9 | Onboarding | Complete |
-| 10 | CLI Commands | Planned |
+| 10 | CLI Commands | Complete |
 | 11 | Polish | Planned |
 | 12 | Distribution | Planned |
 

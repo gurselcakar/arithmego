@@ -9,6 +9,7 @@ import (
 	"github.com/gurselcakar/arithmego/internal/modes"
 	"github.com/gurselcakar/arithmego/internal/storage"
 	"github.com/gurselcakar/arithmego/internal/ui/screens"
+	"github.com/gurselcakar/arithmego/internal/update"
 )
 
 // App is the main Bubble Tea model that orchestrates all screens.
@@ -40,35 +41,44 @@ type App struct {
 
 	// Error tracking
 	lastSaveError error
+
+	// CLI start mode flags
+	startModeQuickPlay bool
+
+	// Update notification
+	updateInfo *update.Info
 }
 
-// New creates a new App instance.
+// New creates a new App instance with default start mode.
 func New() *App {
+	return NewWithStartMode(StartModeMenu)
+}
+
+// NewWithStartMode creates a new App instance with the specified start mode.
+func NewWithStartMode(startMode StartMode) *App {
 	// Load config (ignore errors, use default config as fallback)
 	config, _ := storage.LoadConfig()
 	if config == nil {
 		config = storage.NewConfig()
 	}
 
-	// Build menu with Quick Play if we have last played data
+	// Build menu with Quick Play if we have last played data and mode exists
 	var menuModel screens.MenuModel
 	if config.HasLastPlayed() {
-		mode, _ := modes.Get(config.LastPlayedModeID)
-		menuModel = screens.NewMenuWithQuickPlay(&screens.QuickPlayInfo{
-			ModeName: mode.Name,
-		})
+		mode, ok := modes.Get(config.LastPlayedModeID)
+		if ok && mode != nil {
+			menuModel = screens.NewMenuWithQuickPlay(&screens.QuickPlayInfo{
+				ModeName: mode.Name,
+			})
+		} else {
+			// Mode no longer exists (removed/corrupted), fall back to regular menu
+			menuModel = screens.NewMenu()
+		}
 	} else {
 		menuModel = screens.NewMenu()
 	}
 
-	// Determine starting screen based on onboarding status
-	startScreen := ScreenMenu
-	if !config.Onboarded {
-		startScreen = ScreenOnboarding
-	}
-
-	return &App{
-		screen:          startScreen,
+	app := &App{
 		menuModel:       menuModel,
 		modesModel:      screens.NewModes(),
 		practiceModel:   screens.NewPractice(),
@@ -77,11 +87,72 @@ func New() *App {
 		onboardingModel: screens.NewOnboarding(),
 		config:          config,
 	}
+
+	// Determine starting screen based on start mode
+	switch startMode {
+	case StartModeQuickPlay:
+		// Quick play - will be handled in Init() to start the game
+		app.screen = ScreenMenu
+		app.startModeQuickPlay = true
+	case StartModeStatistics:
+		app.screen = ScreenStatistics
+	case StartModeOnboarding:
+		app.screen = ScreenOnboarding
+	default:
+		// Default menu behavior: check onboarding status
+		if !config.Onboarded {
+			app.screen = ScreenOnboarding
+		} else {
+			app.screen = ScreenMenu
+		}
+	}
+
+	return app
 }
 
 // Init initializes the app.
 func (a *App) Init() tea.Cmd {
-	return nil
+	var cmds []tea.Cmd
+
+	// Handle CLI quick play mode - trigger quick play on first tick
+	if a.startModeQuickPlay {
+		a.startModeQuickPlay = false // Reset flag
+		cmds = append(cmds, func() tea.Msg {
+			return cliQuickPlayMsg{}
+		})
+	}
+
+	// Handle statistics screen init
+	if a.screen == ScreenStatistics {
+		cmds = append(cmds, a.statisticsModel.Init())
+	}
+
+	// Check for updates if auto_update is enabled
+	if a.config != nil && a.config.AutoUpdate {
+		cmds = append(cmds, checkForUpdateCmd())
+	}
+
+	return tea.Batch(cmds...)
+}
+
+// cliQuickPlayMsg triggers quick play from CLI.
+type cliQuickPlayMsg struct{}
+
+// updateCheckResultMsg carries the result of an update check.
+type updateCheckResultMsg struct {
+	info *update.Info
+	err  error
+}
+
+// Version is the current app version, set by the CLI before starting the TUI.
+var Version = "dev"
+
+// checkForUpdateCmd returns a command that checks for updates.
+func checkForUpdateCmd() tea.Cmd {
+	return func() tea.Msg {
+		info, err := update.Check(Version)
+		return updateCheckResultMsg{info: info, err: err}
+	}
 }
 
 // Update handles all messages and routes them to the appropriate screen.
@@ -90,6 +161,21 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if wsm, ok := msg.(tea.WindowSizeMsg); ok {
 		a.width = wsm.Width
 		a.height = wsm.Height
+	}
+
+	// Handle CLI quick play trigger
+	if _, ok := msg.(cliQuickPlayMsg); ok {
+		return a.startQuickPlay()
+	}
+
+	// Handle update check result
+	if updateMsg, ok := msg.(updateCheckResultMsg); ok {
+		if updateMsg.err == nil && updateMsg.info != nil && updateMsg.info.UpdateAvailable {
+			a.updateInfo = updateMsg.info
+			// Update the menu model with the update info
+			a.menuModel.SetUpdateInfo(updateMsg.info.LatestVersion)
+		}
+		return a, nil
 	}
 
 	// Route based on current screen
@@ -359,7 +445,14 @@ func (a *App) completeOnboarding(modeID, difficulty string, durationMs int64) (t
 	_ = storage.SaveConfig(a.config)
 
 	// Set up game state
-	mode, _ := modes.Get(modeID)
+	mode, ok := modes.Get(modeID)
+	if !ok || mode == nil {
+		// Mode doesn't exist - fall back to modes screen
+		a.modesModel = screens.NewModes()
+		a.modesModel.SetSize(a.width, a.height)
+		a.screen = ScreenModes
+		return a, a.modesModel.Init()
+	}
 	a.currentMode = mode
 	a.lastDifficulty = game.ParseDifficulty(difficulty)
 	a.lastDuration = time.Duration(durationMs) * time.Millisecond
@@ -388,7 +481,14 @@ func (a *App) startGame() (tea.Model, tea.Cmd) {
 
 // startQuickPlay starts a game with the last played settings.
 func (a *App) startQuickPlay() (tea.Model, tea.Cmd) {
-	mode, _ := modes.Get(a.config.LastPlayedModeID)
+	mode, ok := modes.Get(a.config.LastPlayedModeID)
+	if !ok || mode == nil {
+		// Mode no longer exists - fall back to modes screen
+		a.modesModel = screens.NewModes()
+		a.modesModel.SetSize(a.width, a.height)
+		a.screen = ScreenModes
+		return a, a.modesModel.Init()
+	}
 
 	a.currentMode = mode
 	a.lastDifficulty = game.ParseDifficulty(a.config.LastPlayedDifficulty)
@@ -418,10 +518,15 @@ func (a *App) saveLastPlayed() {
 // rebuildMenu rebuilds the menu model with current Quick Play state.
 func (a *App) rebuildMenu() {
 	if a.config != nil && a.config.HasLastPlayed() {
-		mode, _ := modes.Get(a.config.LastPlayedModeID)
-		a.menuModel = screens.NewMenuWithQuickPlay(&screens.QuickPlayInfo{
-			ModeName: mode.Name,
-		})
+		mode, ok := modes.Get(a.config.LastPlayedModeID)
+		if ok && mode != nil {
+			a.menuModel = screens.NewMenuWithQuickPlay(&screens.QuickPlayInfo{
+				ModeName: mode.Name,
+			})
+		} else {
+			// Mode no longer exists, fall back to regular menu
+			a.menuModel = screens.NewMenu()
+		}
 	} else {
 		a.menuModel = screens.NewMenu()
 	}
@@ -501,9 +606,3 @@ func (a *App) saveSession() {
 	// Save last played settings for Quick Play
 	a.saveLastPlayed()
 }
-
-// Phase 9: Replace main.go with Cobra CLI
-// - arithmego (no args) → TUI menu
-// - arithmego play → Quick play
-// - arithmego statistics → Statistics screen
-// - arithmego version → Version info

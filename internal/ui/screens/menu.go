@@ -35,11 +35,12 @@ type QuickPlayInfo struct {
 
 // MenuModel represents the main menu screen.
 type MenuModel struct {
-	items    []MenuItem
-	cursor   int
-	width    int
-	height   int
-	quitting bool
+	items         []MenuItem
+	cursor        int
+	width         int
+	height        int
+	quitting      bool
+	updateVersion string // Available update version (empty if none)
 }
 
 // NewMenu creates a new menu model without Quick Play.
@@ -173,6 +174,14 @@ func (m MenuModel) View() string {
 	// Hints
 	hints := components.RenderHints([]string{"↑↓ Navigate", "Enter Select"})
 
+	// Update notification (if available)
+	var updateNotice string
+	if m.updateVersion != "" {
+		// TODO: Implement actual auto-update in Phase 12 (Distribution).
+		// For now, we just notify the user to run the update command manually.
+		updateNotice = styles.Dim.Render("Update available: " + m.updateVersion + " · run 'arithmego update'")
+	}
+
 	// Combine all elements
 	content := lipgloss.JoinVertical(lipgloss.Center,
 		logo,
@@ -185,6 +194,15 @@ func (m MenuModel) View() string {
 		"",
 		hints,
 	)
+
+	// Add update notice at the bottom if available
+	if updateNotice != "" {
+		content = lipgloss.JoinVertical(lipgloss.Center,
+			content,
+			"",
+			updateNotice,
+		)
+	}
 
 	// Center in terminal
 	if m.width > 0 && m.height > 0 {
@@ -204,4 +222,9 @@ func (m MenuModel) Quitting() bool {
 func (m *MenuModel) SetSize(width, height int) {
 	m.width = width
 	m.height = height
+}
+
+// SetUpdateInfo sets the available update version for display.
+func (m *MenuModel) SetUpdateInfo(version string) {
+	m.updateVersion = version
 }

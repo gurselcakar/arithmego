@@ -146,6 +146,9 @@ arithmego/
 │   │   ├── statistics.go
 │   │   └── modes.go
 │   │
+│   ├── update/                     # Update checking
+│   │   └── update.go
+│   │
 │   └── analytics/                  # Statistics
 │       ├── tracker.go
 │       ├── aggregator.go
