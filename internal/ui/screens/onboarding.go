@@ -116,11 +116,11 @@ func (m OnboardingModel) Update(msg tea.Msg) (OnboardingModel, tea.Cmd) {
 			m.moveCursor(-1)
 		case "down", "j":
 			m.moveCursor(1)
-		case "enter":
+		case "enter", "right", "l":
 			return m.advance()
 		case "s", "S":
 			return m.skip()
-		case "b", "B":
+		case "b", "B", "left", "h":
 			m.back()
 		}
 	}
@@ -266,7 +266,7 @@ func (m OnboardingModel) viewWelcome() string {
 
 	hints := components.RenderHintsStructured([]components.Hint{
 		{Key: "S", Action: "Skip"},
-		{Key: "Enter", Action: "Continue"},
+		{Key: "→", Action: "Continue"},
 	})
 
 	// Bottom-anchored hints layout with small gap at bottom
@@ -315,10 +315,10 @@ func (m OnboardingModel) viewDuration() string {
 	)
 
 	hints := components.RenderHintsStructured([]components.Hint{
-		{Key: "B", Action: "Back"},
+		{Key: "←", Action: "Back"},
 		{Key: "↑↓", Action: "Navigate"},
 		{Key: "S", Action: "Skip"},
-		{Key: "Enter", Action: "Continue"},
+		{Key: "→", Action: "Continue"},
 	})
 
 	// Bottom-anchored hints layout with small gap at bottom
@@ -367,10 +367,10 @@ func (m OnboardingModel) viewDifficulty() string {
 	)
 
 	hints := components.RenderHintsStructured([]components.Hint{
-		{Key: "B", Action: "Back"},
+		{Key: "←", Action: "Back"},
 		{Key: "↑↓", Action: "Navigate"},
 		{Key: "S", Action: "Skip"},
-		{Key: "Enter", Action: "Continue"},
+		{Key: "→", Action: "Continue"},
 	})
 
 	// Bottom-anchored hints layout with small gap at bottom
@@ -419,10 +419,10 @@ func (m OnboardingModel) viewOperation() string {
 	)
 
 	hints := components.RenderHintsStructured([]components.Hint{
-		{Key: "B", Action: "Back"},
+		{Key: "←", Action: "Back"},
 		{Key: "↑↓", Action: "Navigate"},
 		{Key: "S", Action: "Skip"},
-		{Key: "Enter", Action: "Continue"},
+		{Key: "→", Action: "Continue"},
 	})
 
 	// Bottom-anchored hints layout with small gap at bottom
@@ -477,10 +477,10 @@ func (m OnboardingModel) viewInputMode() string {
 	)
 
 	hints := components.RenderHintsStructured([]components.Hint{
-		{Key: "B", Action: "Back"},
+		{Key: "←", Action: "Back"},
 		{Key: "↑↓", Action: "Navigate"},
 		{Key: "S", Action: "Skip"},
-		{Key: "Enter", Action: "Start Game"},
+		{Key: "→", Action: "Start"},
 	})
 
 	// Bottom-anchored hints layout with small gap at bottom
