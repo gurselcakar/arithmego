@@ -22,7 +22,8 @@ const practiceFeedbackDuration = 400 * time.Millisecond
 type PracticeSettingsField int
 
 const (
-	PracticeFieldOperation PracticeSettingsField = iota
+	PracticeFieldCategory PracticeSettingsField = iota
+	PracticeFieldOperation
 	PracticeFieldDifficulty
 	PracticeFieldInputMethod
 )
@@ -45,13 +46,13 @@ type PracticeModel struct {
 	settingsOpen  bool
 	settingsField PracticeSettingsField
 
-	// Operation selection
-	allOperations   []operationEntry // All operations organized for display
-	operationIndex  int              // Currently selected operation index
-	selectedOp      game.Operation   // Current operation (nil = mixed within category)
-	isMixed         bool             // True when "Mixed" is selected
-	mixedCategory   game.Category    // Which category to mix (empty = all basic)
-	categoryIndices map[game.Category]int // Start index of each category in allOperations
+	// Category and operation selection
+	categories       []game.Category    // Available categories
+	categoryIdx      int                // Currently selected category index
+	categoryOps      []operationEntry   // Operations for current category (including Mixed)
+	operationIdx     int                // Currently selected operation within category
+	selectedOp       game.Operation     // Current operation (nil = mixed)
+	isMixed          bool               // True when "Mixed" is selected
 
 	// Difficulty
 	difficulty    game.Difficulty
@@ -73,67 +74,49 @@ type PracticeModel struct {
 // NewPractice creates a new practice model.
 func NewPractice() PracticeModel {
 	m := PracticeModel{
-		settingsField:   PracticeFieldOperation,
-		difficulty:      game.Medium,
-		difficultyIdx:   2, // Medium is index 2
-		inputMethod:     components.InputTyping,
-		input:           components.NewInput(),
-		choices:         components.NewChoices(),
-		categoryIndices: make(map[game.Category]int),
+		settingsField: PracticeFieldCategory,
+		categories:    []game.Category{game.CategoryBasic, game.CategoryPower, game.CategoryAdvanced},
+		categoryIdx:   0, // Start with Basic
+		difficulty:    game.Medium,
+		difficultyIdx: 2, // Medium is index 2
+		inputMethod:   components.InputTyping,
+		input:         components.NewInput(),
+		choices:       components.NewChoices(),
 	}
 
-	// Build operation list organized by category
-	m.buildOperationList()
+	// Build operation list for initial category
+	m.buildCategoryOps()
 
-	// Start with Addition selected
-	m.operationIndex = 0
-	m.selectedOp = m.allOperations[0].op
-	m.isMixed = false
-
-	// Generate first question
-	m.generateQuestion()
+	// Start with first operation (Addition) and generate first question
+	m.operationIdx = 0
+	m.applySelectedOperation()
 
 	return m
 }
 
-// buildOperationList organizes operations by category for the settings panel.
-func (m *PracticeModel) buildOperationList() {
-	m.allOperations = []operationEntry{}
+// buildCategoryOps builds the operation list for the current category.
+func (m *PracticeModel) buildCategoryOps() {
+	cat := m.categories[m.categoryIdx]
+	ops := operations.ByCategory(cat)
+	sortedOps := sortOperations(ops, cat)
 
-	// Define category order and their operations
-	categories := []struct {
-		cat  game.Category
-		name string
-	}{
-		{game.CategoryBasic, "Basic"},
-		{game.CategoryPower, "Power"},
-		{game.CategoryAdvanced, "Advanced"},
-	}
-
-	for _, c := range categories {
-		m.categoryIndices[c.cat] = len(m.allOperations)
-		ops := operations.ByCategory(c.cat)
-
-		// Sort operations within category for consistent order
-		sortedOps := sortOperations(ops, c.cat)
-
-		for _, op := range sortedOps {
-			m.allOperations = append(m.allOperations, operationEntry{
-				op:       op,
-				name:     op.Name(),
-				symbol:   op.Symbol(),
-				category: c.cat,
-			})
-		}
-
-		// Add "Mixed" option for this category
-		m.allOperations = append(m.allOperations, operationEntry{
-			op:       nil, // nil indicates mixed
-			name:     fmt.Sprintf("Mixed %s", c.name),
-			symbol:   "*",
-			category: c.cat,
+	m.categoryOps = []operationEntry{}
+	for _, op := range sortedOps {
+		m.categoryOps = append(m.categoryOps, operationEntry{
+			op:       op,
+			name:     op.Name(),
+			symbol:   op.Symbol(),
+			category: cat,
 		})
 	}
+
+	// Add "Mixed" option at the end
+	m.categoryOps = append(m.categoryOps, operationEntry{
+		op:       nil,
+		name:     "Mixed",
+		symbol:   "*",
+		category: cat,
+	})
 }
 
 // sortOperations returns operations in a consistent display order.
@@ -238,32 +221,6 @@ func (m PracticeModel) updatePractice(msg tea.KeyMsg) (PracticeModel, tea.Cmd) {
 		m.generateQuestion()
 		return m, nil
 
-	case "1", "2", "3", "4":
-		if m.inputMethod == components.InputMultipleChoice {
-			// Route to choices component for answer selection
-			var cmd tea.Cmd
-			m.choices, cmd = m.choices.Update(msg)
-			return m, cmd
-		}
-		// Typing mode: use as operation shortcuts
-		switch msg.String() {
-		case "1":
-			m.selectOperationByName("Addition")
-		case "2":
-			m.selectOperationByName("Subtraction")
-		case "3":
-			m.selectOperationByName("Multiplication")
-		case "4":
-			m.selectOperationByName("Division")
-		}
-		return m, nil
-
-	case "0", "m":
-		if m.inputMethod == components.InputTyping {
-			m.selectMixedBasic()
-		}
-		return m, nil
-
 	case "s", " ":
 		m.skip()
 		return m, nil
@@ -275,13 +232,16 @@ func (m PracticeModel) updatePractice(msg tea.KeyMsg) (PracticeModel, tea.Cmd) {
 		return m, nil
 
 	default:
-		if m.inputMethod == components.InputTyping {
-			// Pass to text input component
+		if m.inputMethod == components.InputMultipleChoice {
+			// Route to choices component for answer selection
 			var cmd tea.Cmd
-			m.input, cmd = m.input.Update(msg)
+			m.choices, cmd = m.choices.Update(msg)
 			return m, cmd
 		}
-		return m, nil
+		// Typing mode: pass to text input component
+		var cmd tea.Cmd
+		m.input, cmd = m.input.Update(msg)
+		return m, cmd
 	}
 }
 
@@ -289,58 +249,87 @@ func (m PracticeModel) updatePractice(msg tea.KeyMsg) (PracticeModel, tea.Cmd) {
 func (m PracticeModel) updateSettingsPanel(msg tea.KeyMsg) (PracticeModel, tea.Cmd) {
 	switch msg.String() {
 	case "tab", "enter":
-		if msg.String() == "enter" && m.settingsField == PracticeFieldOperation {
-			// Confirm selection and close panel
-			m.applySelectedOperation()
-			m.settingsOpen = false
-			return m, m.input.Focus()
-		}
-		// Tab cycles through fields
-		m.settingsField = (m.settingsField + 1) % 3
-		return m, nil
+		// Close panel and apply changes
+		m.applySelectedOperation()
+		m.settingsOpen = false
+		return m, m.input.Focus()
 
 	case "up", "k":
-		switch m.settingsField {
-		case PracticeFieldOperation:
-			if m.operationIndex > 0 {
-				m.operationIndex--
-			}
-		case PracticeFieldDifficulty:
-			m.adjustDifficulty(1)
+		// Move to previous field
+		if m.settingsField > 0 {
+			m.settingsField--
 		}
 		return m, nil
 
 	case "down", "j":
-		switch m.settingsField {
-		case PracticeFieldOperation:
-			if m.operationIndex < len(m.allOperations)-1 {
-				m.operationIndex++
-			}
-		case PracticeFieldDifficulty:
-			m.adjustDifficulty(-1)
+		// Move to next field
+		if m.settingsField < PracticeFieldInputMethod {
+			m.settingsField++
 		}
 		return m, nil
 
 	case "left", "h":
 		switch m.settingsField {
+		case PracticeFieldCategory:
+			m.adjustCategory(-1)
+			m.applySelectedOperation()
+		case PracticeFieldOperation:
+			m.adjustOperation(-1)
+			m.applySelectedOperation()
 		case PracticeFieldDifficulty:
 			m.adjustDifficulty(-1)
+			m.generateQuestion()
 		case PracticeFieldInputMethod:
 			m.toggleInputMethod()
+			m.generateQuestion()
 		}
 		return m, nil
 
 	case "right", "l":
 		switch m.settingsField {
+		case PracticeFieldCategory:
+			m.adjustCategory(1)
+			m.applySelectedOperation()
+		case PracticeFieldOperation:
+			m.adjustOperation(1)
+			m.applySelectedOperation()
 		case PracticeFieldDifficulty:
 			m.adjustDifficulty(1)
+			m.generateQuestion()
 		case PracticeFieldInputMethod:
 			m.toggleInputMethod()
+			m.generateQuestion()
 		}
 		return m, nil
 	}
 
 	return m, nil
+}
+
+// adjustCategory changes the category by delta, rebuilding operations.
+func (m *PracticeModel) adjustCategory(delta int) {
+	m.categoryIdx += delta
+	if m.categoryIdx < 0 {
+		m.categoryIdx = 0
+	}
+	if m.categoryIdx >= len(m.categories) {
+		m.categoryIdx = len(m.categories) - 1
+	}
+	// Rebuild operations for new category
+	m.buildCategoryOps()
+	// Reset operation index to first
+	m.operationIdx = 0
+}
+
+// adjustOperation changes the operation by delta within current category.
+func (m *PracticeModel) adjustOperation(delta int) {
+	m.operationIdx += delta
+	if m.operationIdx < 0 {
+		m.operationIdx = 0
+	}
+	if m.operationIdx >= len(m.categoryOps) {
+		m.operationIdx = len(m.categoryOps) - 1
+	}
 }
 
 // adjustDifficulty changes the difficulty by delta, clamping to valid range.
@@ -356,42 +345,16 @@ func (m *PracticeModel) adjustDifficulty(delta int) {
 	m.difficulty = diffs[m.difficultyIdx]
 }
 
-// selectOperationByName selects a specific operation by name.
-func (m *PracticeModel) selectOperationByName(name string) {
-	for i, entry := range m.allOperations {
-		if entry.op != nil && entry.op.Name() == name {
-			m.operationIndex = i
-			m.selectedOp = entry.op
-			m.isMixed = false
-			m.generateQuestion()
-			return
-		}
-	}
-}
-
-// selectMixedBasic selects mixed basic operations.
-func (m *PracticeModel) selectMixedBasic() {
-	// Find the "Mixed Basic" entry
-	for i, entry := range m.allOperations {
-		if entry.op == nil && entry.category == game.CategoryBasic {
-			m.operationIndex = i
-			m.selectedOp = nil
-			m.isMixed = true
-			m.mixedCategory = game.CategoryBasic
-			m.generateQuestion()
-			return
-		}
-	}
-}
-
-// applySelectedOperation applies the currently highlighted operation.
+// applySelectedOperation applies the currently selected operation and generates a new question.
 func (m *PracticeModel) applySelectedOperation() {
-	entry := m.allOperations[m.operationIndex]
+	if m.operationIdx >= len(m.categoryOps) {
+		return
+	}
+	entry := m.categoryOps[m.operationIdx]
 	if entry.op == nil {
 		// Mixed mode for this category
 		m.selectedOp = nil
 		m.isMixed = true
-		m.mixedCategory = entry.category
 	} else {
 		m.selectedOp = entry.op
 		m.isMixed = false
@@ -404,7 +367,8 @@ func (m *PracticeModel) generateQuestion() {
 	var ops []game.Operation
 
 	if m.isMixed {
-		ops = operations.ByCategory(m.mixedCategory)
+		// Mixed mode: use all operations from current category
+		ops = operations.ByCategory(m.categories[m.categoryIdx])
 	} else if m.selectedOp != nil {
 		ops = []game.Operation{m.selectedOp}
 	} else {
@@ -494,17 +458,22 @@ func (m PracticeModel) View() string {
 
 // viewClean renders the minimal practice view.
 func (m PracticeModel) viewClean() string {
-	// Current operation and difficulty indicator (top-left)
+	// Header bar with current settings
 	var opName string
 	if m.isMixed {
-		opName = fmt.Sprintf("Mixed %s", categoryDisplayName(m.mixedCategory))
+		opName = "Mixed"
 	} else if m.selectedOp != nil {
 		opName = m.selectedOp.Name()
 	} else {
 		opName = "Mixed"
 	}
-	indicator := fmt.Sprintf("%s\n%s", opName, m.difficulty.String())
-	indicatorStyled := styles.Subtle.Render(indicator)
+	catName := categoryDisplayName(m.categories[m.categoryIdx])
+	inputMethodName := "Typing"
+	if m.inputMethod == components.InputMultipleChoice {
+		inputMethodName = "Choice"
+	}
+	header := fmt.Sprintf("%s • %s • %s • %s", catName, opName, m.difficulty.String(), inputMethodName)
+	headerStyled := styles.Subtle.Render(header)
 
 	// Question (center)
 	var questionView string
@@ -512,19 +481,28 @@ func (m PracticeModel) viewClean() string {
 		questionView = components.RenderQuestion(m.current.Display)
 	}
 
-	// Input with feedback styling
-	var inputView string
+	// Input with feedback styling, wrapped in fixed-width container
+	var inputContent string
 	if m.inputMethod == components.InputMultipleChoice {
-		inputView = m.choices.View()
+		inputContent = m.choices.View()
 	} else {
-		inputView = m.input.View()
+		inputContent = m.input.View()
 	}
 	switch m.feedback {
 	case "correct":
-		inputView = styles.Correct.Render(inputView)
+		inputContent = styles.Correct.Render(inputContent)
 	case "incorrect":
-		inputView = styles.Incorrect.Render(inputView)
+		inputContent = styles.Incorrect.Render(inputContent)
 	}
+	// Use screen width to prevent layout shift when switching input methods
+	inputWidth := m.width
+	if inputWidth == 0 {
+		inputWidth = 80 // fallback
+	}
+	inputView := lipgloss.NewStyle().
+		Width(inputWidth).
+		Align(lipgloss.Center).
+		Render(inputContent)
 
 	// Center content
 	centerContent := lipgloss.JoinVertical(lipgloss.Center,
@@ -548,53 +526,32 @@ func (m PracticeModel) viewClean() string {
 			{Key: "Q", Action: "Quit"},
 			{Key: "Tab", Action: "Settings"},
 			{Key: "↑↓", Action: "Difficulty"},
-			{Key: "1-4", Action: "Operation"},
 			{Key: "S", Action: "Skip"},
 		})
 	}
 
-	// Layout with bottom-anchored hints and small gap at bottom
+	// Layout with header at top, content centered, hints at bottom
 	if m.width > 0 && m.height > 0 {
 		hintsHeight := lipgloss.Height(hints)
+		headerHeight := 2 // header + padding
 		bottomPadding := 1
-		indicatorWidth := 20
-		centerWidth := m.width - indicatorWidth*2
-		availableHeight := m.height - hintsHeight - bottomPadding
+		availableHeight := m.height - hintsHeight - bottomPadding - headerHeight
 
-		// Position indicator on left
-		indicatorCol := lipgloss.NewStyle().
-			Width(indicatorWidth).
-			Height(availableHeight).
-			Align(lipgloss.Left).
-			AlignVertical(lipgloss.Center).
-			PaddingLeft(2).
-			Render(indicatorStyled)
+		// Header centered at top
+		centeredHeader := lipgloss.Place(m.width, headerHeight, lipgloss.Center, lipgloss.Top, headerStyled)
 
-		// Center the question
-		centerCol := lipgloss.NewStyle().
-			Width(centerWidth).
-			Height(availableHeight).
-			Align(lipgloss.Center).
-			AlignVertical(lipgloss.Center).
-			Render(centerContent)
-
-		// Empty right column for balance
-		rightCol := lipgloss.NewStyle().
-			Width(indicatorWidth).
-			Height(availableHeight).
-			Render("")
-
-		mainArea := lipgloss.JoinHorizontal(lipgloss.Top, indicatorCol, centerCol, rightCol)
+		// Center content on full width
+		centeredContent := lipgloss.Place(m.width, availableHeight, lipgloss.Center, lipgloss.Center, centerContent)
 
 		// Center hints at bottom with padding
 		centeredHints := lipgloss.Place(m.width, hintsHeight+bottomPadding, lipgloss.Center, lipgloss.Top, hints)
 
-		return lipgloss.JoinVertical(lipgloss.Left, mainArea, centeredHints)
+		return lipgloss.JoinVertical(lipgloss.Left, centeredHeader, centeredContent, centeredHints)
 	}
 
 	// Fallback for unknown dimensions
 	return lipgloss.JoinVertical(lipgloss.Center,
-		indicatorStyled,
+		headerStyled,
 		"",
 		"",
 		centerContent,
@@ -609,19 +566,44 @@ func (m PracticeModel) viewWithSettingsPanel() string {
 	// Build settings panel
 	panel := m.renderSettingsPanel()
 
+	// Header bar with current settings (same as viewClean)
+	var opName string
+	if m.isMixed {
+		opName = "Mixed"
+	} else if m.selectedOp != nil {
+		opName = m.selectedOp.Name()
+	} else {
+		opName = "Mixed"
+	}
+	catName := categoryDisplayName(m.categories[m.categoryIdx])
+	inputMethodName := "Typing"
+	if m.inputMethod == components.InputMultipleChoice {
+		inputMethodName = "Choice"
+	}
+	header := fmt.Sprintf("%s • %s • %s • %s", catName, opName, m.difficulty.String(), inputMethodName)
+	headerStyled := styles.Subtle.Render(header)
+
 	// Question (stays visible)
 	var questionView string
 	if m.current != nil {
 		questionView = components.RenderQuestion(m.current.Display)
 	}
 
-	// Input (dimmed when settings open)
-	var inputView string
+	// Input (dimmed when settings open), wrapped in fixed-width container
+	var inputContent string
 	if m.inputMethod == components.InputMultipleChoice {
-		inputView = styles.Dim.Render(m.choices.View())
+		inputContent = styles.Dim.Render(m.choices.View())
 	} else {
-		inputView = styles.Dim.Render(m.input.View())
+		inputContent = styles.Dim.Render(m.input.View())
 	}
+	inputWidth := m.width
+	if inputWidth == 0 {
+		inputWidth = 80 // fallback
+	}
+	inputView := lipgloss.NewStyle().
+		Width(inputWidth).
+		Align(lipgloss.Center).
+		Render(inputContent)
 
 	centerContent := lipgloss.JoinVertical(lipgloss.Center,
 		questionView,
@@ -631,45 +613,60 @@ func (m PracticeModel) viewWithSettingsPanel() string {
 
 	// Hints (different hints when settings open)
 	hints := components.RenderHintsStructured([]components.Hint{
-		{Key: "Esc", Action: "Close"},
-		{Key: "Tab", Action: "Next"},
-		{Key: "↑↓", Action: "Select"},
-		{Key: "←→", Action: "Adjust"},
-		{Key: "Enter", Action: "Confirm"},
+		{Key: "Tab", Action: "Close"},
+		{Key: "↑↓", Action: "Field"},
+		{Key: "←→", Action: "Change"},
 	})
 
-	// Layout with bottom-anchored hints and small gap at bottom
+	// Layout: panel overlaid on left, content stays centered on full screen
 	if m.width > 0 && m.height > 0 {
 		hintsHeight := lipgloss.Height(hints)
+		headerHeight := 2
 		bottomPadding := 1
-		panelWidth := 28
-		centerWidth := m.width - panelWidth - 4
-		availableHeight := m.height - hintsHeight - bottomPadding
+		panelWidth := 30
+		availableHeight := m.height - hintsHeight - bottomPadding - headerHeight
 
-		// Settings panel on left
-		panelCol := lipgloss.NewStyle().
-			Width(panelWidth).
-			Height(availableHeight).
-			Align(lipgloss.Left).
-			AlignVertical(lipgloss.Top).
-			PaddingLeft(2).
-			PaddingTop(2).
-			Render(panel)
+		// Header centered at top (same position as viewClean)
+		centeredHeader := lipgloss.Place(m.width, headerHeight, lipgloss.Center, lipgloss.Top, headerStyled)
 
-		// Center the question
-		centerCol := lipgloss.NewStyle().
-			Width(centerWidth).
-			Height(availableHeight).
-			Align(lipgloss.Center).
-			AlignVertical(lipgloss.Center).
-			Render(centerContent)
+		// Settings panel with vertical centering
+		panelContent := lipgloss.NewStyle().PaddingLeft(2).Render(panel)
+		panelStyled := lipgloss.Place(panelWidth, availableHeight, lipgloss.Left, lipgloss.Center, panelContent)
 
-		mainArea := lipgloss.JoinHorizontal(lipgloss.Top, panelCol, centerCol)
+		// Center content on full width (same as viewClean)
+		centeredContent := lipgloss.Place(m.width, availableHeight, lipgloss.Center, lipgloss.Center, centerContent)
+
+		// Overlay: panel on left, content from panelWidth onwards
+		panelLines := strings.Split(panelStyled, "\n")
+		contentLines := strings.Split(centeredContent, "\n")
+
+		var resultLines []string
+		for i := 0; i < len(contentLines); i++ {
+			panelLine := ""
+			if i < len(panelLines) {
+				panelLine = panelLines[i]
+			}
+			contentLine := contentLines[i]
+
+			// Pad panel to exact width
+			panelActualWidth := lipgloss.Width(panelLine)
+			if panelActualWidth < panelWidth {
+				panelLine = panelLine + strings.Repeat(" ", panelWidth-panelActualWidth)
+			}
+
+			// Append content after panel area (content starts with spaces due to centering)
+			if lipgloss.Width(contentLine) > panelWidth {
+				resultLines = append(resultLines, panelLine+contentLine[panelWidth:])
+			} else {
+				resultLines = append(resultLines, panelLine)
+			}
+		}
+		mainArea := strings.Join(resultLines, "\n")
 
 		// Center hints at bottom with padding
 		centeredHints := lipgloss.Place(m.width, hintsHeight+bottomPadding, lipgloss.Center, lipgloss.Top, hints)
 
-		return lipgloss.JoinVertical(lipgloss.Left, mainArea, centeredHints)
+		return lipgloss.JoinVertical(lipgloss.Left, centeredHeader, mainArea, centeredHints)
 	}
 
 	// Fallback
@@ -690,6 +687,20 @@ func (m PracticeModel) renderSettingsPanel() string {
 	b.WriteString(styles.Bold.Render("SETTINGS"))
 	b.WriteString("\n\n")
 
+	// Category section
+	catSectionStyle := styles.Bold
+	if m.settingsField != PracticeFieldCategory {
+		catSectionStyle = styles.Subtle
+	}
+	b.WriteString(catSectionStyle.Render("Category"))
+	b.WriteString("\n")
+	b.WriteString(m.renderHorizontalSelector(
+		m.categoryIdx,
+		categoryNames(m.categories),
+		m.settingsField == PracticeFieldCategory,
+	))
+	b.WriteString("\n\n")
+
 	// Operation section
 	opSectionStyle := styles.Bold
 	if m.settingsField != PracticeFieldOperation {
@@ -697,41 +708,12 @@ func (m PracticeModel) renderSettingsPanel() string {
 	}
 	b.WriteString(opSectionStyle.Render("Operation"))
 	b.WriteString("\n")
-
-	// Render operations grouped by category
-	var currentCategory game.Category
-	for i, entry := range m.allOperations {
-		// Category header
-		if entry.category != currentCategory {
-			currentCategory = entry.category
-			if i > 0 {
-				b.WriteString("\n")
-			}
-			catName := categoryDisplayName(entry.category)
-			b.WriteString(styles.Dim.Render("  " + catName))
-			b.WriteString("\n")
-		}
-
-		// Operation entry
-		prefix := "    "
-		style := styles.Unselected
-		if i == m.operationIndex && m.settingsField == PracticeFieldOperation {
-			prefix = "  > "
-			style = styles.Selected
-		} else if i == m.operationIndex {
-			prefix = "  > "
-			style = styles.Normal
-		}
-
-		displayName := entry.name
-		if entry.op == nil {
-			displayName = "Mixed"
-		}
-		b.WriteString(style.Render(prefix + displayName))
-		b.WriteString("\n")
-	}
-
-	b.WriteString("\n")
+	b.WriteString(m.renderHorizontalSelector(
+		m.operationIdx,
+		operationNames(m.categoryOps),
+		m.settingsField == PracticeFieldOperation,
+	))
+	b.WriteString("\n\n")
 
 	// Difficulty section
 	diffSectionStyle := styles.Bold
@@ -760,7 +742,7 @@ func (m PracticeModel) renderSettingsPanel() string {
 	}
 	b.WriteString(m.renderHorizontalSelector(
 		inputMethodIdx,
-		[]string{"Typing", "Multiple Choice"},
+		[]string{"Typing", "Choice"},
 		m.settingsField == PracticeFieldInputMethod,
 	))
 
@@ -801,6 +783,22 @@ func difficultyNames() []string {
 	names := make([]string, len(diffs))
 	for i, d := range diffs {
 		names[i] = d.String()
+	}
+	return names
+}
+
+func categoryNames(cats []game.Category) []string {
+	names := make([]string, len(cats))
+	for i, c := range cats {
+		names[i] = categoryDisplayName(c)
+	}
+	return names
+}
+
+func operationNames(ops []operationEntry) []string {
+	names := make([]string, len(ops))
+	for i, e := range ops {
+		names[i] = e.name
 	}
 	return names
 }

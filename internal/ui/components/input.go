@@ -76,11 +76,11 @@ func (m *InputModel) Reset() {
 }
 
 // Focus sets focus on the input.
-func (m InputModel) Focus() tea.Cmd {
+func (m *InputModel) Focus() tea.Cmd {
 	return m.textInput.Focus()
 }
 
 // Blur removes focus from the input.
-func (m InputModel) Blur() {
+func (m *InputModel) Blur() {
 	m.textInput.Blur()
 }
