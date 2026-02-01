@@ -5,13 +5,12 @@ type Screen int
 
 const (
 	ScreenMenu Screen = iota
-	ScreenModes      // Phase 3
-	ScreenLaunch     // Phase 3
+	ScreenPlay       // Unified play screen (Phase 11)
 	ScreenGame
 	ScreenPause
 	ScreenResults
-	ScreenPractice   // Phase 7
-	ScreenStatistics // Phase 5
+	ScreenPractice     // Phase 7
+	ScreenStatistics   // Phase 5
 	ScreenSettings     // Phase 8
 	ScreenOnboarding   // Phase 9
 	ScreenQuitConfirm  // Phase 11

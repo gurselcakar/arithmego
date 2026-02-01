@@ -21,17 +21,11 @@ type MenuItem struct {
 type MenuAction int
 
 const (
-	ActionQuickPlay MenuAction = iota
-	ActionModes
+	ActionPlay MenuAction = iota
 	ActionPractice
 	ActionStatistics
 	ActionSettings
 )
-
-// QuickPlayInfo contains information for displaying the Quick Play menu item.
-type QuickPlayInfo struct {
-	ModeName string
-}
 
 // MenuModel represents the main menu screen.
 type MenuModel struct {
@@ -43,30 +37,11 @@ type MenuModel struct {
 	updateVersion string // Available update version (empty if none)
 }
 
-// NewMenu creates a new menu model without Quick Play.
+// NewMenu creates a new menu model.
 func NewMenu() MenuModel {
 	return MenuModel{
 		items: []MenuItem{
-			{Label: "Modes", Action: ActionModes},
-			{Label: "Practice", Action: ActionPractice},
-			{IsSpacer: true},
-			{Label: "Statistics", Action: ActionStatistics},
-			{Label: "Settings", Action: ActionSettings},
-		},
-		cursor: 0,
-	}
-}
-
-// NewMenuWithQuickPlay creates a new menu model with Quick Play as the first item.
-func NewMenuWithQuickPlay(quickPlay *QuickPlayInfo) MenuModel {
-	label := "Quick Play"
-	if quickPlay != nil && quickPlay.ModeName != "" {
-		label = "Quick Play · " + quickPlay.ModeName
-	}
-	return MenuModel{
-		items: []MenuItem{
-			{Label: label, Action: ActionQuickPlay},
-			{Label: "Modes", Action: ActionModes},
+			{Label: "Play", Action: ActionPlay},
 			{Label: "Practice", Action: ActionPractice},
 			{IsSpacer: true},
 			{Label: "Statistics", Action: ActionStatistics},

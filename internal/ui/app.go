@@ -21,11 +21,10 @@ type App struct {
 
 	// Screen models
 	menuModel        screens.MenuModel
+	playModel        screens.PlayModel
 	gameModel        screens.GameModel
 	pauseModel       screens.PauseModel
 	resultsModel     screens.ResultsModel
-	modesModel       screens.ModesModel
-	launchModel      screens.LaunchModel
 	practiceModel    screens.PracticeModel
 	statisticsModel  screens.StatisticsModel
 	settingsModel    screens.SettingsModel
@@ -65,25 +64,9 @@ func NewWithStartMode(startMode StartMode) *App {
 		config = storage.NewConfig()
 	}
 
-	// Build menu with Quick Play if we have last played data and mode exists
-	var menuModel screens.MenuModel
-	if config.HasLastPlayed() {
-		mode, ok := modes.Get(config.LastPlayedModeID)
-		if ok && mode != nil {
-			menuModel = screens.NewMenuWithQuickPlay(&screens.QuickPlayInfo{
-				ModeName: mode.Name,
-			})
-		} else {
-			// Mode no longer exists (removed/corrupted), fall back to regular menu
-			menuModel = screens.NewMenu()
-		}
-	} else {
-		menuModel = screens.NewMenu()
-	}
-
 	app := &App{
-		menuModel:       menuModel,
-		modesModel:      screens.NewModes(),
+		menuModel:       screens.NewMenu(),
+		playModel:       screens.NewPlay(config),
 		practiceModel:   screens.NewPractice(),
 		statisticsModel: screens.NewStatistics(),
 		settingsModel:   screens.NewSettings(config),
@@ -185,16 +168,14 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch a.screen {
 	case ScreenMenu:
 		return a.updateMenu(msg)
+	case ScreenPlay:
+		return a.updatePlay(msg)
 	case ScreenGame:
 		return a.updateGame(msg)
 	case ScreenPause:
 		return a.updatePause(msg)
 	case ScreenResults:
 		return a.updateResults(msg)
-	case ScreenModes:
-		return a.updateModes(msg)
-	case ScreenLaunch:
-		return a.updateLaunch(msg)
 	case ScreenPractice:
 		return a.updatePractice(msg)
 	case ScreenStatistics:
@@ -218,13 +199,11 @@ func (a *App) updateMenu(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Check for menu selection
 	if selectMsg, ok := msg.(screens.MenuSelectMsg); ok {
 		switch selectMsg.Action {
-		case screens.ActionQuickPlay:
-			return a.startQuickPlay()
-		case screens.ActionModes:
-			a.modesModel = screens.NewModes()
-			a.modesModel.SetSize(a.width, a.height)
-			a.screen = ScreenModes
-			return a, a.modesModel.Init()
+		case screens.ActionPlay:
+			a.playModel = screens.NewPlay(a.config)
+			a.playModel.SetSize(a.width, a.height)
+			a.screen = ScreenPlay
+			return a, a.playModel.Init()
 		case screens.ActionPractice:
 			a.practiceModel = screens.NewPractice()
 			a.practiceModel.SetSize(a.width, a.height)
@@ -246,6 +225,29 @@ func (a *App) updateMenu(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Check if quitting
 	if a.menuModel.Quitting() {
 		return a, tea.Quit
+	}
+
+	return a, cmd
+}
+
+// updatePlay handles play screen updates.
+func (a *App) updatePlay(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
+	a.playModel, cmd = a.playModel.Update(msg)
+
+	// Check for start game
+	if startMsg, ok := msg.(screens.StartGameMsg); ok {
+		a.currentMode = startMsg.Mode
+		a.lastDifficulty = startMsg.Difficulty
+		a.lastDuration = startMsg.Duration
+		a.lastInputMethod = startMsg.InputMethod
+		return a.startGame()
+	}
+
+	// Check for return to menu
+	if _, ok := msg.(screens.ReturnToMenuMsg); ok {
+		a.screen = ScreenMenu
+		return a, nil
 	}
 
 	return a, cmd
@@ -358,53 +360,6 @@ func (a *App) updateResults(msg tea.Msg) (tea.Model, tea.Cmd) {
 		a.screen = ScreenMenu
 		a.session = nil
 		return a, nil
-	}
-
-	return a, cmd
-}
-
-// updateModes handles modes screen updates.
-func (a *App) updateModes(msg tea.Msg) (tea.Model, tea.Cmd) {
-	var cmd tea.Cmd
-	a.modesModel, cmd = a.modesModel.Update(msg)
-
-	// Check for mode selection
-	if selectMsg, ok := msg.(screens.ModeSelectMsg); ok {
-		a.currentMode = selectMsg.Mode
-		a.launchModel = screens.NewLaunch(a.currentMode, a.config)
-		a.launchModel.SetSize(a.width, a.height)
-		a.screen = ScreenLaunch
-		return a, a.launchModel.Init()
-	}
-
-	if _, ok := msg.(screens.ReturnToMenuMsg); ok {
-		a.screen = ScreenMenu
-		return a, nil
-	}
-
-	return a, cmd
-}
-
-// updateLaunch handles launch screen updates.
-func (a *App) updateLaunch(msg tea.Msg) (tea.Model, tea.Cmd) {
-	var cmd tea.Cmd
-	a.launchModel, cmd = a.launchModel.Update(msg)
-
-	// Check for start game
-	if startMsg, ok := msg.(screens.StartGameMsg); ok {
-		a.currentMode = startMsg.Mode
-		a.lastDifficulty = startMsg.Difficulty
-		a.lastDuration = startMsg.Duration
-		a.lastInputMethod = startMsg.InputMethod
-		return a.startGame()
-	}
-
-	// Check for return to modes
-	if _, ok := msg.(screens.ReturnToModesMsg); ok {
-		a.modesModel = screens.NewModes()
-		a.modesModel.SetSize(a.width, a.height)
-		a.screen = ScreenModes
-		return a, a.modesModel.Init()
 	}
 
 	return a, cmd
@@ -525,11 +480,11 @@ func (a *App) completeOnboarding(modeID, difficulty string, durationMs int64, in
 	// Set up game state
 	mode, ok := modes.Get(modeID)
 	if !ok || mode == nil {
-		// Mode doesn't exist - fall back to modes screen
-		a.modesModel = screens.NewModes()
-		a.modesModel.SetSize(a.width, a.height)
-		a.screen = ScreenModes
-		return a, a.modesModel.Init()
+		// Mode doesn't exist - fall back to Play screen
+		a.playModel = screens.NewPlay(a.config)
+		a.playModel.SetSize(a.width, a.height)
+		a.screen = ScreenPlay
+		return a, a.playModel.Init()
 	}
 	a.currentMode = mode
 	a.lastDifficulty = game.ParseDifficulty(difficulty)
@@ -541,14 +496,14 @@ func (a *App) completeOnboarding(modeID, difficulty string, durationMs int64, in
 }
 
 // startGame creates a new session and starts the game.
-// If mode is invalid, gracefully returns to the modes screen.
+// If mode is invalid, gracefully returns to the Play screen.
 func (a *App) startGame() (tea.Model, tea.Cmd) {
 	if a.currentMode == nil || len(a.currentMode.Operations) == 0 {
-		// Gracefully recover: return to modes screen instead of crashing
-		a.modesModel = screens.NewModes()
-		a.modesModel.SetSize(a.width, a.height)
-		a.screen = ScreenModes
-		return a, a.modesModel.Init()
+		// Gracefully recover: return to Play screen instead of crashing
+		a.playModel = screens.NewPlay(a.config)
+		a.playModel.SetSize(a.width, a.height)
+		a.screen = ScreenPlay
+		return a, a.playModel.Init()
 	}
 
 	a.session = game.NewSession(a.currentMode.Operations, a.lastDifficulty, a.lastDuration)
@@ -562,11 +517,11 @@ func (a *App) startGame() (tea.Model, tea.Cmd) {
 func (a *App) startQuickPlay() (tea.Model, tea.Cmd) {
 	mode, ok := modes.Get(a.config.LastPlayedModeID)
 	if !ok || mode == nil {
-		// Mode no longer exists - fall back to modes screen
-		a.modesModel = screens.NewModes()
-		a.modesModel.SetSize(a.width, a.height)
-		a.screen = ScreenModes
-		return a, a.modesModel.Init()
+		// Mode no longer exists - fall back to Play screen
+		a.playModel = screens.NewPlay(a.config)
+		a.playModel.SetSize(a.width, a.height)
+		a.screen = ScreenPlay
+		return a, a.playModel.Init()
 	}
 
 	a.currentMode = mode
@@ -600,21 +555,9 @@ func (a *App) saveLastPlayed() {
 	_ = storage.SaveConfig(a.config)
 }
 
-// rebuildMenu rebuilds the menu model with current Quick Play state.
+// rebuildMenu rebuilds the menu model.
 func (a *App) rebuildMenu() {
-	if a.config != nil && a.config.HasLastPlayed() {
-		mode, ok := modes.Get(a.config.LastPlayedModeID)
-		if ok && mode != nil {
-			a.menuModel = screens.NewMenuWithQuickPlay(&screens.QuickPlayInfo{
-				ModeName: mode.Name,
-			})
-		} else {
-			// Mode no longer exists, fall back to regular menu
-			a.menuModel = screens.NewMenu()
-		}
-	} else {
-		a.menuModel = screens.NewMenu()
-	}
+	a.menuModel = screens.NewMenu()
 	a.menuModel.SetSize(a.width, a.height)
 }
 
@@ -623,16 +566,14 @@ func (a *App) View() string {
 	switch a.screen {
 	case ScreenMenu:
 		return a.menuModel.View()
+	case ScreenPlay:
+		return a.playModel.View()
 	case ScreenGame:
 		return a.gameModel.View()
 	case ScreenPause:
 		return a.pauseModel.View()
 	case ScreenResults:
 		return a.resultsModel.View()
-	case ScreenModes:
-		return a.modesModel.View()
-	case ScreenLaunch:
-		return a.launchModel.View()
 	case ScreenPractice:
 		return a.practiceModel.View()
 	case ScreenStatistics:
