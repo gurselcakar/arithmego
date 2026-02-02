@@ -7,9 +7,11 @@ const (
 	ColorRed         = lipgloss.Color("1")
 	ColorGreen       = lipgloss.Color("2")
 	ColorYellow      = lipgloss.Color("3")
+	ColorBlue        = lipgloss.Color("4")
 	ColorMagenta     = lipgloss.Color("5")
 	ColorCyan        = lipgloss.Color("6")
 	ColorWhite       = lipgloss.Color("7")
+	ColorBrightBlue  = lipgloss.Color("12")
 	ColorBrightWhite = lipgloss.Color("15")
 )
 
@@ -53,6 +55,8 @@ var (
 
 	// Scoring - Milestone announcements
 	Milestone = lipgloss.NewStyle().Bold(true).Foreground(ColorYellow)
-)
 
-// Phase 8: Add onboarding-specific styles if needed
+	// Branding
+	Logo    = lipgloss.NewStyle().Foreground(ColorBrightBlue)
+	Tagline = lipgloss.NewStyle().Foreground(ColorWhite)
+)

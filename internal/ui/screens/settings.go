@@ -1,8 +1,7 @@
 package screens
 
 import (
-	"strings"
-
+	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
@@ -26,6 +25,11 @@ const (
 
 const settingsFieldCount = 5
 
+// Layout constants for fixed sections
+const (
+	settingsHintsHeight = 3 // Height reserved for hints at the bottom
+)
+
 // SettingsModel represents the settings screen.
 type SettingsModel struct {
 	config *storage.Config
@@ -37,6 +41,8 @@ type SettingsModel struct {
 	inputMethodIndex int
 	width            int
 	height           int
+	viewport         viewport.Model
+	viewportReady    bool
 }
 
 // NewSettings creates a new settings model.
@@ -59,6 +65,8 @@ func NewSettings(config *storage.Config) SettingsModel {
 		durationIndex:    durIdx,
 		inputMethodIndex: inputIdx,
 		focusedField:     SettingsFieldDifficulty,
+		viewport:         viewport.New(0, 0),
+		viewportReady:    false,
 	}
 }
 
@@ -69,27 +77,35 @@ func (m SettingsModel) Init() tea.Cmd {
 
 // Update handles settings screen input.
 func (m SettingsModel) Update(msg tea.Msg) (SettingsModel, tea.Cmd) {
+	var cmd tea.Cmd
+	var cmds []tea.Cmd
+
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		m.width = msg.Width
-		m.height = msg.Height
+		m.SetSize(msg.Width, msg.Height)
 		return m, nil
 
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "up", "k":
 			m.focusPrev()
+			m.updateViewportContent()
 		case "down", "j":
 			m.focusNext()
+			m.updateViewportContent()
 		case "left", "h":
 			m.adjustValue(-1)
+			m.updateViewportContent()
 		case "right", "l":
 			m.adjustValue(1)
+			m.updateViewportContent()
 		case "enter", " ":
 			if m.focusedField == SettingsFieldAutoUpdate {
 				m.toggleAutoUpdate()
+				m.updateViewportContent()
 			} else if m.focusedField == SettingsFieldSkipQuitConfirm {
 				m.toggleSkipQuitConfirm()
+				m.updateViewportContent()
 			}
 		case "esc":
 			return m, func() tea.Msg {
@@ -98,7 +114,11 @@ func (m SettingsModel) Update(msg tea.Msg) (SettingsModel, tea.Cmd) {
 		}
 	}
 
-	return m, nil
+	// Update viewport (for mouse scrolling if enabled)
+	m.viewport, cmd = m.viewport.Update(msg)
+	cmds = append(cmds, cmd)
+
+	return m, tea.Batch(cmds...)
 }
 
 // focusPrev moves focus to the previous field.
@@ -185,17 +205,87 @@ func (m *SettingsModel) saveConfig() {
 
 // View renders the settings screen.
 func (m SettingsModel) View() string {
-	var b strings.Builder
+	if !m.viewportReady {
+		return "Loading..."
+	}
 
+	// Hints
+	hints := m.getHints()
+
+	// All screens: viewport + hints
+	return lipgloss.JoinVertical(lipgloss.Left,
+		m.viewport.View(),
+		lipgloss.Place(m.width, settingsHintsHeight, lipgloss.Center, lipgloss.Center, hints),
+	)
+}
+
+// getHints returns the context-aware hints for the settings screen.
+func (m SettingsModel) getHints() string {
+	if m.focusedField == SettingsFieldAutoUpdate || m.focusedField == SettingsFieldSkipQuitConfirm {
+		// Toggle hints
+		return components.RenderHintsStructured([]components.Hint{
+			{Key: "↑↓", Action: "Navigate"},
+			{Key: "Space", Action: "Toggle"},
+			{Key: "Esc", Action: "Back"},
+		})
+	}
+	// Selector hints
+	return components.RenderHintsStructured([]components.Hint{
+		{Key: "↑↓", Action: "Navigate"},
+		{Key: "←→", Action: "Change"},
+		{Key: "Esc", Action: "Back"},
+	})
+}
+
+// SetSize sets the screen dimensions.
+func (m *SettingsModel) SetSize(width, height int) {
+	m.width = width
+	m.height = height
+
+	viewportHeight := m.calculateViewportHeight()
+
+	if !m.viewportReady {
+		m.viewport = viewport.New(m.width, viewportHeight)
+		m.viewport.YPosition = 0
+		m.viewportReady = true
+	} else {
+		m.viewport.Width = m.width
+		m.viewport.Height = viewportHeight
+	}
+
+	m.updateViewportContent()
+}
+
+// calculateViewportHeight returns the viewport height.
+func (m SettingsModel) calculateViewportHeight() int {
+	viewportHeight := m.height - settingsHintsHeight
+	if viewportHeight < 1 {
+		viewportHeight = 1
+	}
+	return viewportHeight
+}
+
+// updateViewportContent updates the viewport with the settings content.
+func (m *SettingsModel) updateViewportContent() {
+	if !m.viewportReady {
+		return
+	}
+
+	content := m.renderSettingsContent()
+	m.viewport.SetContent(content)
+}
+
+// renderSettingsContent renders the main settings content for the viewport.
+func (m SettingsModel) renderSettingsContent() string {
 	// Title
-	title := styles.Bold.Render("SETTINGS")
+	title := styles.Logo.Render("SETTINGS")
 
 	// Gather all data
 	diffs := game.AllDifficulties()
 	durs := modes.AllowedDurations
 	inputOptions := []string{"Typing", "Multiple Choice"}
 
-	// All labels used in settings
+	// All labels used in settings (for width calculation)
 	labels := []string{"Difficulty", "Duration", "Input", "Auto-update", "Skip quit confirm"}
 
 	// All possible values across all selectors
@@ -208,100 +298,85 @@ func (m SettingsModel) View() string {
 	labelWidth := maxLen(labels)
 	valueWidth := maxLen(allValues)
 
-	// Separator width: label + 2 spaces + arrow + space + value + space + arrow
-	separatorWidth := labelWidth + 2 + 1 + 1 + valueWidth + 1 + 1
-	separator := styles.Dim.Render(strings.Repeat("─", separatorWidth))
-
-	difficultyRow := components.RenderSelector(m.difficultyIndex, settingsDifficultyNames(diffs), components.SelectorOptions{
-		Label:      "Difficulty",
-		LabelWidth: labelWidth,
-		ValueWidth: valueWidth,
-		Focused:    m.focusedField == SettingsFieldDifficulty,
-	})
-
-	durationRow := components.RenderSelector(m.durationIndex, settingsDurationNames(durs), components.SelectorOptions{
-		Label:      "Duration",
-		LabelWidth: labelWidth,
-		ValueWidth: valueWidth,
-		Focused:    m.focusedField == SettingsFieldDuration,
-	})
-
-	inputMethodRow := components.RenderSelector(m.inputMethodIndex, inputOptions, components.SelectorOptions{
-		Label:      "Input",
-		LabelWidth: labelWidth,
-		ValueWidth: valueWidth,
-		Focused:    m.focusedField == SettingsFieldInputMethod,
-	})
-
-	autoUpdateRow := components.RenderToggle(m.config.AutoUpdate, components.ToggleOptions{
-		Label:      "Auto-update",
-		LabelWidth: labelWidth,
-		Focused:    m.focusedField == SettingsFieldAutoUpdate,
-	})
-
-	skipQuitConfirmRow := components.RenderToggle(m.config.SkipQuitConfirmation, components.ToggleOptions{
-		Label:      "Skip quit confirm",
-		LabelWidth: labelWidth,
-		Focused:    m.focusedField == SettingsFieldSkipQuitConfirm,
-	})
-
-	// Context-aware hints
-	var hints string
-	if m.focusedField == SettingsFieldAutoUpdate || m.focusedField == SettingsFieldSkipQuitConfirm {
-		// Toggle hints
-		hints = components.RenderHintsStructured([]components.Hint{
-			{Key: "↑↓", Action: "Navigate"},
-			{Key: "Space", Action: "Toggle"},
-			{Key: "Esc", Action: "Back"},
-		})
-	} else {
-		// Selector hints
-		hints = components.RenderHintsStructured([]components.Hint{
-			{Key: "↑↓", Action: "Navigate"},
-			{Key: "←→", Action: "Change"},
-			{Key: "Esc", Action: "Back"},
-		})
+	// Focus indicator helper
+	focusPrefix := func(focused bool) string {
+		if focused {
+			return styles.Accent.Render("> ")
+		}
+		return "  "
 	}
 
-	// Build settings block (left-aligned rows)
+	// Section headers
+	gameDefaultsHeader := styles.Dim.Render("── Game Defaults ──")
+	preferencesHeader := styles.Dim.Render("── Preferences ──")
+
+	// Game defaults rows
+	difficultyRow := focusPrefix(m.focusedField == SettingsFieldDifficulty) +
+		components.RenderSelector(m.difficultyIndex, settingsDifficultyNames(diffs), components.SelectorOptions{
+			Label:      "Difficulty",
+			LabelWidth: labelWidth,
+			ValueWidth: valueWidth,
+			Focused:    m.focusedField == SettingsFieldDifficulty,
+		})
+
+	durationRow := focusPrefix(m.focusedField == SettingsFieldDuration) +
+		components.RenderSelector(m.durationIndex, settingsDurationNames(durs), components.SelectorOptions{
+			Label:      "Duration",
+			LabelWidth: labelWidth,
+			ValueWidth: valueWidth,
+			Focused:    m.focusedField == SettingsFieldDuration,
+		})
+
+	inputMethodRow := focusPrefix(m.focusedField == SettingsFieldInputMethod) +
+		components.RenderSelector(m.inputMethodIndex, inputOptions, components.SelectorOptions{
+			Label:      "Input",
+			LabelWidth: labelWidth,
+			ValueWidth: valueWidth,
+			Focused:    m.focusedField == SettingsFieldInputMethod,
+		})
+
+	// Preferences rows
+	autoUpdateRow := focusPrefix(m.focusedField == SettingsFieldAutoUpdate) +
+		components.RenderToggle(m.config.AutoUpdate, components.ToggleOptions{
+			Label:      "Auto-update",
+			LabelWidth: labelWidth,
+			Focused:    m.focusedField == SettingsFieldAutoUpdate,
+		})
+
+	skipQuitConfirmRow := focusPrefix(m.focusedField == SettingsFieldSkipQuitConfirm) +
+		components.RenderToggle(m.config.SkipQuitConfirmation, components.ToggleOptions{
+			Label:      "Skip quit confirm",
+			LabelWidth: labelWidth,
+			Focused:    m.focusedField == SettingsFieldSkipQuitConfirm,
+		})
+
+	// Build settings block with section headers
 	settingsBlock := lipgloss.JoinVertical(lipgloss.Left,
+		gameDefaultsHeader,
+		"",
 		difficultyRow,
 		durationRow,
 		inputMethodRow,
-		separator,
+		"",
+		preferencesHeader,
+		"",
 		autoUpdateRow,
 		skipQuitConfirmRow,
 	)
 
 	// Build main content with centered title and settings block
-	mainContent := lipgloss.JoinVertical(lipgloss.Center,
+	content := lipgloss.JoinVertical(lipgloss.Center,
 		title,
+		"",
 		"",
 		settingsBlock,
 	)
 
-	// Bottom-anchored hints layout with small gap at bottom
-	if m.width > 0 && m.height > 0 {
-		hintsHeight := lipgloss.Height(hints)
-		bottomPadding := 1
-		availableHeight := m.height - hintsHeight - bottomPadding
-
-		centeredMain := lipgloss.Place(m.width, availableHeight, lipgloss.Center, lipgloss.Center, mainContent)
-		centeredHints := lipgloss.Place(m.width, hintsHeight+bottomPadding, lipgloss.Center, lipgloss.Top, hints)
-
-		b.WriteString(lipgloss.JoinVertical(lipgloss.Left, centeredMain, centeredHints))
-		return b.String()
+	// Center both horizontally and vertically within viewport
+	if m.width > 0 && m.viewportReady {
+		return lipgloss.Place(m.width, m.viewport.Height, lipgloss.Center, lipgloss.Center, content)
 	}
-
-	// Fallback for unknown dimensions
-	b.WriteString(lipgloss.JoinVertical(lipgloss.Center, mainContent, "", "", hints))
-	return b.String()
-}
-
-// SetSize sets the screen dimensions.
-func (m *SettingsModel) SetSize(width, height int) {
-	m.width = width
-	m.height = height
+	return content
 }
 
 // Config returns the current config.
