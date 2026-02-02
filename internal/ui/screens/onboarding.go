@@ -1,6 +1,7 @@
 package screens
 
 import (
+	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
@@ -18,9 +19,10 @@ const (
 	StepDifficulty
 	StepOperation
 	StepInputMode
+	StepReady
 )
 
-const totalSteps = 5
+const totalSteps = 5 // Duration, Difficulty, Operation, InputMode, Ready (Welcome has no dots)
 
 // OnboardingCompleteMsg is sent when onboarding is completed with selections.
 type OnboardingCompleteMsg struct {
@@ -76,24 +78,26 @@ var inputModeOptions = []string{
 // OnboardingModel represents the onboarding screen.
 type OnboardingModel struct {
 	step            OnboardingStep
-	cursor          int
 	durationIndex   int
 	difficultyIndex int
 	operationIndex  int
 	inputModeIndex  int
 	width           int
 	height          int
+	viewport        viewport.Model
+	viewportReady   bool
 }
 
 // NewOnboarding creates a new onboarding model.
 func NewOnboarding() OnboardingModel {
 	return OnboardingModel{
 		step:            StepWelcome,
-		cursor:          0,
 		durationIndex:   1, // Default: 60s
 		difficultyIndex: 1, // Default: Easy
 		operationIndex:  0, // Default: Addition
 		inputModeIndex:  0, // Default: Typing
+		viewport:        viewport.New(0, 0),
+		viewportReady:   false,
 	}
 }
 
@@ -102,49 +106,113 @@ func (m OnboardingModel) Init() tea.Cmd {
 	return nil
 }
 
+// Layout constants for fixed sections
+const (
+	hintsHeight    = 3 // Height reserved for hints at the bottom
+	progressHeight = 2 // Height reserved for progress dots (1 line + padding)
+)
+
+// Scroll constants for viewport navigation
+const (
+	// linesBeforeOptions is the number of lines before the options list:
+	// title (1) + spacing (1) + subtitle (1) + spacing (3) = 6
+	linesBeforeOptions = 6
+	// scrollPaddingTop is the minimum lines to keep above the selection
+	scrollPaddingTop = 2
+	// scrollPaddingBottom is the minimum lines to keep below the selection
+	scrollPaddingBottom = 3
+)
+
 // Update handles onboarding screen input.
 func (m OnboardingModel) Update(msg tea.Msg) (OnboardingModel, tea.Cmd) {
+	var cmd tea.Cmd
+	var cmds []tea.Cmd
+
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		m.width = msg.Width
-		m.height = msg.Height
+		m.SetSize(msg.Width, msg.Height)
 		return m, nil
 
 	case tea.KeyMsg:
 		switch msg.String() {
+		case "esc", "ctrl+c", "q":
+			return m, tea.Quit
 		case "up", "k":
-			m.moveCursor(-1)
+			m.moveSelection(-1)
+			m.updateViewportContent()
+			m.scrollToSelection()
 		case "down", "j":
-			m.moveCursor(1)
+			m.moveSelection(1)
+			m.updateViewportContent()
+			m.scrollToSelection()
 		case "enter", "right", "l":
-			return m.advance()
+			newModel, cmd := m.advance()
+			newModel.updateViewportContent()
+			return newModel, cmd
 		case "s", "S":
 			return m.skip()
 		case "b", "B", "left", "h":
 			m.back()
+			m.updateViewportContent()
 		}
 	}
 
-	return m, nil
+	// Update viewport (for mouse scrolling if enabled)
+	m.viewport, cmd = m.viewport.Update(msg)
+	cmds = append(cmds, cmd)
+
+	return m, tea.Batch(cmds...)
 }
 
-// moveCursor navigates within the current step's options.
-func (m *OnboardingModel) moveCursor(delta int) {
-	maxCursor := m.maxCursorForStep()
-	m.cursor += delta
-	if m.cursor < 0 {
-		m.cursor = 0
+// moveSelection navigates within the current step's options.
+func (m *OnboardingModel) moveSelection(delta int) {
+	index := m.currentIndex()
+	maxIndex := m.maxIndexForStep()
+
+	index += delta
+	if index < 0 {
+		index = 0
 	}
-	if m.cursor > maxCursor {
-		m.cursor = maxCursor
+	if index > maxIndex {
+		index = maxIndex
 	}
+
+	m.setCurrentIndex(index)
 }
 
-// maxCursorForStep returns the maximum cursor position for the current step.
-func (m OnboardingModel) maxCursorForStep() int {
+// currentIndex returns the selected index for the current step.
+func (m OnboardingModel) currentIndex() int {
 	switch m.step {
-	case StepWelcome:
+	case StepDuration:
+		return m.durationIndex
+	case StepDifficulty:
+		return m.difficultyIndex
+	case StepOperation:
+		return m.operationIndex
+	case StepInputMode:
+		return m.inputModeIndex
+	default:
 		return 0
+	}
+}
+
+// setCurrentIndex sets the selected index for the current step.
+func (m *OnboardingModel) setCurrentIndex(index int) {
+	switch m.step {
+	case StepDuration:
+		m.durationIndex = index
+	case StepDifficulty:
+		m.difficultyIndex = index
+	case StepOperation:
+		m.operationIndex = index
+	case StepInputMode:
+		m.inputModeIndex = index
+	}
+}
+
+// maxIndexForStep returns the maximum index for the current step.
+func (m OnboardingModel) maxIndexForStep() int {
+	switch m.step {
 	case StepDuration:
 		return len(durationOptions) - 1
 	case StepDifficulty:
@@ -158,26 +226,20 @@ func (m OnboardingModel) maxCursorForStep() int {
 	}
 }
 
-// advance saves the current selection and moves to the next step.
+// advance moves to the next step, completing onboarding if at the final step.
 func (m OnboardingModel) advance() (OnboardingModel, tea.Cmd) {
 	switch m.step {
 	case StepWelcome:
 		m.step = StepDuration
-		m.cursor = m.durationIndex
 	case StepDuration:
-		m.durationIndex = m.cursor
 		m.step = StepDifficulty
-		m.cursor = m.difficultyIndex
 	case StepDifficulty:
-		m.difficultyIndex = m.cursor
 		m.step = StepOperation
-		m.cursor = m.operationIndex
 	case StepOperation:
-		m.operationIndex = m.cursor
 		m.step = StepInputMode
-		m.cursor = m.inputModeIndex
 	case StepInputMode:
-		m.inputModeIndex = m.cursor
+		m.step = StepReady
+	case StepReady:
 		return m, m.complete()
 	}
 	return m, nil
@@ -188,18 +250,15 @@ func (m *OnboardingModel) back() {
 	switch m.step {
 	case StepDuration:
 		m.step = StepWelcome
-		m.cursor = 0
 	case StepDifficulty:
 		m.step = StepDuration
-		m.cursor = m.durationIndex
 	case StepOperation:
 		m.step = StepDifficulty
-		m.cursor = m.difficultyIndex
 	case StepInputMode:
 		m.step = StepOperation
-		m.cursor = m.operationIndex
+	case StepReady:
+		m.step = StepInputMode
 	}
-	// No-op on Welcome step
 }
 
 // skip returns the skip message to use defaults.
@@ -228,33 +287,165 @@ func (m OnboardingModel) complete() tea.Cmd {
 
 // View renders the onboarding screen.
 func (m OnboardingModel) View() string {
+	if !m.viewportReady {
+		return "Loading..."
+	}
+
+	// Get progress dots and hints for current step
+	progress := m.getProgressForStep()
+	hints := m.getHintsForStep()
+
+	// All screens: viewport + progress dots + hints
+	return lipgloss.JoinVertical(lipgloss.Left,
+		m.viewport.View(),
+		lipgloss.Place(m.width, progressHeight, lipgloss.Center, lipgloss.Center, progress),
+		lipgloss.Place(m.width, hintsHeight, lipgloss.Center, lipgloss.Center, hints),
+	)
+}
+
+// getProgressForStep returns the progress dots for the current step.
+func (m OnboardingModel) getProgressForStep() string {
 	switch m.step {
 	case StepWelcome:
-		return m.viewWelcome()
+		return "" // No progress dots on welcome screen
 	case StepDuration:
-		return m.viewDuration()
+		return components.ProgressDotsColored(1, totalSteps)
 	case StepDifficulty:
-		return m.viewDifficulty()
+		return components.ProgressDotsColored(2, totalSteps)
 	case StepOperation:
-		return m.viewOperation()
+		return components.ProgressDotsColored(3, totalSteps)
 	case StepInputMode:
-		return m.viewInputMode()
+		return components.ProgressDotsColored(4, totalSteps)
+	case StepReady:
+		return components.ProgressDotsColored(5, totalSteps)
 	default:
 		return ""
 	}
 }
 
-// viewWelcome renders the welcome step.
-func (m OnboardingModel) viewWelcome() string {
-	logo := components.LogoForWidth(m.width)
+// getHintsForStep returns the appropriate hints for the current step.
+func (m OnboardingModel) getHintsForStep() string {
+	switch m.step {
+	case StepWelcome:
+		return components.RenderHintsStructured([]components.Hint{
+			{Key: "S", Action: "Skip"},
+			{Key: "→", Action: "Continue"},
+		})
+	case StepReady:
+		return components.RenderHintsStructured([]components.Hint{
+			{Key: "←", Action: "Back"},
+			{Key: "→", Action: "Start"},
+		})
+	default:
+		return components.RenderHintsStructured([]components.Hint{
+			{Key: "←", Action: "Back"},
+			{Key: "↑↓", Action: "Navigate"},
+			{Key: "S", Action: "Skip"},
+			{Key: "→", Action: "Continue"},
+		})
+	}
+}
+
+// SetSize updates the screen dimensions.
+func (m *OnboardingModel) SetSize(width, height int) {
+	m.width = width
+	m.height = height
+
+	viewportHeight := m.calculateViewportHeight()
+
+	if !m.viewportReady {
+		m.viewport = viewport.New(m.width, viewportHeight)
+		m.viewport.YPosition = 0
+		m.viewportReady = true
+	} else {
+		m.viewport.Width = m.width
+		m.viewport.Height = viewportHeight
+	}
+
+	m.updateViewportContent()
+}
+
+// calculateViewportHeight returns the viewport height.
+func (m OnboardingModel) calculateViewportHeight() int {
+	// Bottom sections are always present (progress dots + hints)
+	bottomSectionHeight := hintsHeight + progressHeight
+
+	viewportHeight := m.height - bottomSectionHeight
+	if viewportHeight < 1 {
+		viewportHeight = 1
+	}
+
+	return viewportHeight
+}
+
+// updateViewportContent updates the viewport with the current step's content.
+func (m *OnboardingModel) updateViewportContent() {
+	if !m.viewportReady {
+		return
+	}
+
+	content := m.getViewportContent()
+	m.viewport.SetContent(content)
+}
+
+// scrollToSelection scrolls the viewport to keep the selected option visible.
+func (m *OnboardingModel) scrollToSelection() {
+	if !m.viewportReady || m.step == StepWelcome {
+		return
+	}
+
+	optionsCount := m.maxIndexForStep() + 1
+	contentHeight := linesBeforeOptions + optionsCount
+
+	// Calculate where the content starts (centered)
+	contentStart := (m.viewport.Height - contentHeight) / 2
+	if contentStart < 0 {
+		contentStart = 0
+	}
+
+	// Selection line within the viewport
+	selectionLine := contentStart + linesBeforeOptions + m.currentIndex()
+
+	// Get viewport bounds
+	viewportTop := m.viewport.YOffset
+	viewportBottom := viewportTop + m.viewport.Height
+
+	// Scroll if selection is outside visible area with padding
+	if selectionLine < viewportTop+scrollPaddingTop {
+		m.viewport.SetYOffset(selectionLine - scrollPaddingTop)
+	} else if selectionLine > viewportBottom-scrollPaddingBottom {
+		m.viewport.SetYOffset(selectionLine - m.viewport.Height + scrollPaddingBottom)
+	}
+}
+
+// getViewportContent returns the content for the current step.
+func (m OnboardingModel) getViewportContent() string {
+	switch m.step {
+	case StepWelcome:
+		return m.renderWelcomeContent()
+	case StepDuration:
+		return m.renderDurationContent()
+	case StepDifficulty:
+		return m.renderDifficultyContent()
+	case StepOperation:
+		return m.renderOperationContent()
+	case StepInputMode:
+		return m.renderInputModeContent()
+	case StepReady:
+		return m.renderReadyContent()
+	default:
+		return ""
+	}
+}
+
+// renderWelcomeContent renders the welcome step content.
+func (m OnboardingModel) renderWelcomeContent() string {
+	logo := components.LogoColoredForWidth(m.width)
 	separator := styles.Dim.Render(components.LogoSeparator())
 	tagline := components.Tagline()
+	setup := styles.Tagline.Render("Let's get you set up.")
 
-	intro := "Welcome! Let's set up your first session."
-
-	progress := styles.Dim.Render(components.ProgressDots(1, totalSteps))
-
-	mainContent := lipgloss.JoinVertical(lipgloss.Center,
+	content := lipgloss.JoinVertical(lipgloss.Center,
 		logo,
 		"",
 		separator,
@@ -262,249 +453,283 @@ func (m OnboardingModel) viewWelcome() string {
 		tagline,
 		"",
 		"",
-		intro,
 		"",
-		"",
-		progress,
+		setup,
 	)
 
-	hints := components.RenderHintsStructured([]components.Hint{
-		{Key: "S", Action: "Skip"},
-		{Key: "→", Action: "Continue"},
-	})
-
-	// Bottom-anchored hints layout with small gap at bottom
-	if m.width > 0 && m.height > 0 {
-		hintsHeight := lipgloss.Height(hints)
-		bottomPadding := 1
-		availableHeight := m.height - hintsHeight - bottomPadding
-
-		centeredMain := lipgloss.Place(m.width, availableHeight, lipgloss.Center, lipgloss.Center, mainContent)
-		centeredHints := lipgloss.Place(m.width, hintsHeight+bottomPadding, lipgloss.Center, lipgloss.Top, hints)
-
-		return lipgloss.JoinVertical(lipgloss.Left, centeredMain, centeredHints)
+	// Center both horizontally and vertically within viewport
+	if m.width > 0 && m.viewportReady {
+		return lipgloss.Place(m.width, m.viewport.Height, lipgloss.Center, lipgloss.Center, content)
 	}
-
-	// Fallback for unknown dimensions
-	return lipgloss.JoinVertical(lipgloss.Center, mainContent, "", hints)
+	return content
 }
 
-// viewDuration renders the duration selection step.
-func (m OnboardingModel) viewDuration() string {
-	title := styles.Bold.Render("SESSION LENGTH")
+// renderDurationContent renders the duration step content.
+func (m OnboardingModel) renderDurationContent() string {
+	title := styles.Logo.Render("SESSION LENGTH")
 	subtitle := styles.Subtle.Render("How long do you want to play?")
 
 	var options []string
 	for i, opt := range durationOptions {
-		if i == m.cursor {
-			options = append(options, styles.Selected.Render("> "+opt.Label))
+		if i == m.durationIndex {
+			options = append(options, styles.Accent.Render("> ")+styles.Bold.Render(opt.Label))
 		} else {
-			options = append(options, styles.Unselected.Render("  "+opt.Label))
+			options = append(options, "  "+styles.Unselected.Render(opt.Label))
 		}
 	}
-
 	optionsList := lipgloss.JoinVertical(lipgloss.Left, options...)
 
-	progress := styles.Dim.Render(components.ProgressDots(2, totalSteps))
-
-	mainContent := lipgloss.JoinVertical(lipgloss.Center,
-		title,
-		subtitle,
-		"",
-		"",
-		optionsList,
-		"",
-		"",
-		progress,
-	)
-
-	hints := components.RenderHintsStructured([]components.Hint{
-		{Key: "←", Action: "Back"},
-		{Key: "↑↓", Action: "Navigate"},
-		{Key: "S", Action: "Skip"},
-		{Key: "→", Action: "Continue"},
-	})
-
-	// Bottom-anchored hints layout with small gap at bottom
-	if m.width > 0 && m.height > 0 {
-		hintsHeight := lipgloss.Height(hints)
-		bottomPadding := 1
-		availableHeight := m.height - hintsHeight - bottomPadding
-
-		centeredMain := lipgloss.Place(m.width, availableHeight, lipgloss.Center, lipgloss.Center, mainContent)
-		centeredHints := lipgloss.Place(m.width, hintsHeight+bottomPadding, lipgloss.Center, lipgloss.Top, hints)
-
-		return lipgloss.JoinVertical(lipgloss.Left, centeredMain, centeredHints)
-	}
-
-	// Fallback for unknown dimensions
-	return lipgloss.JoinVertical(lipgloss.Center, mainContent, "", hints)
+	return m.renderStepContent(title, subtitle, optionsList)
 }
 
-// viewDifficulty renders the difficulty selection step.
-func (m OnboardingModel) viewDifficulty() string {
-	title := styles.Bold.Render("DIFFICULTY")
-	subtitle := styles.Subtle.Render("Select your starting level")
+// renderDifficultyContent renders the difficulty step content.
+func (m OnboardingModel) renderDifficultyContent() string {
+	title := styles.Logo.Render("DIFFICULTY")
+	subtitle := styles.Subtle.Render("What difficulty level?")
 
 	var options []string
 	for i, opt := range difficultyOptions {
-		if i == m.cursor {
-			options = append(options, styles.Selected.Render("> "+opt))
+		if i == m.difficultyIndex {
+			options = append(options, styles.Accent.Render("> ")+styles.Bold.Render(opt))
 		} else {
-			options = append(options, styles.Unselected.Render("  "+opt))
+			options = append(options, "  "+styles.Unselected.Render(opt))
 		}
 	}
-
 	optionsList := lipgloss.JoinVertical(lipgloss.Left, options...)
 
-	progress := styles.Dim.Render(components.ProgressDots(3, totalSteps))
-
-	mainContent := lipgloss.JoinVertical(lipgloss.Center,
-		title,
-		subtitle,
-		"",
-		"",
-		optionsList,
-		"",
-		"",
-		progress,
-	)
-
-	hints := components.RenderHintsStructured([]components.Hint{
-		{Key: "←", Action: "Back"},
-		{Key: "↑↓", Action: "Navigate"},
-		{Key: "S", Action: "Skip"},
-		{Key: "→", Action: "Continue"},
-	})
-
-	// Bottom-anchored hints layout with small gap at bottom
-	if m.width > 0 && m.height > 0 {
-		hintsHeight := lipgloss.Height(hints)
-		bottomPadding := 1
-		availableHeight := m.height - hintsHeight - bottomPadding
-
-		centeredMain := lipgloss.Place(m.width, availableHeight, lipgloss.Center, lipgloss.Center, mainContent)
-		centeredHints := lipgloss.Place(m.width, hintsHeight+bottomPadding, lipgloss.Center, lipgloss.Top, hints)
-
-		return lipgloss.JoinVertical(lipgloss.Left, centeredMain, centeredHints)
-	}
-
-	// Fallback for unknown dimensions
-	return lipgloss.JoinVertical(lipgloss.Center, mainContent, "", hints)
+	return m.renderStepContent(title, subtitle, optionsList)
 }
 
-// viewOperation renders the operation selection step.
-func (m OnboardingModel) viewOperation() string {
-	title := styles.Bold.Render("OPERATION")
-	subtitle := styles.Subtle.Render("What would you like to practice?")
+// renderOperationContent renders the operation step content.
+func (m OnboardingModel) renderOperationContent() string {
+	title := styles.Logo.Render("OPERATION")
+	subtitle := styles.Subtle.Render("What do you want to play?")
 
 	var options []string
 	for i, opt := range operationOptions {
-		if i == m.cursor {
-			options = append(options, styles.Selected.Render("> "+opt.Label))
+		if i == m.operationIndex {
+			options = append(options, styles.Accent.Render("> ")+styles.Bold.Render(opt.Label))
 		} else {
-			options = append(options, styles.Unselected.Render("  "+opt.Label))
+			options = append(options, "  "+styles.Unselected.Render(opt.Label))
 		}
 	}
-
 	optionsList := lipgloss.JoinVertical(lipgloss.Left, options...)
 
-	progress := styles.Dim.Render(components.ProgressDots(4, totalSteps))
+	// Add note about more modes
+	note := styles.Dim.Render("More modes available in Play menu")
 
-	mainContent := lipgloss.JoinVertical(lipgloss.Center,
-		title,
-		subtitle,
-		"",
-		"",
-		optionsList,
-		"",
-		"",
-		progress,
-	)
-
-	hints := components.RenderHintsStructured([]components.Hint{
-		{Key: "←", Action: "Back"},
-		{Key: "↑↓", Action: "Navigate"},
-		{Key: "S", Action: "Skip"},
-		{Key: "→", Action: "Continue"},
-	})
-
-	// Bottom-anchored hints layout with small gap at bottom
-	if m.width > 0 && m.height > 0 {
-		hintsHeight := lipgloss.Height(hints)
-		bottomPadding := 1
-		availableHeight := m.height - hintsHeight - bottomPadding
-
-		centeredMain := lipgloss.Place(m.width, availableHeight, lipgloss.Center, lipgloss.Center, mainContent)
-		centeredHints := lipgloss.Place(m.width, hintsHeight+bottomPadding, lipgloss.Center, lipgloss.Top, hints)
-
-		return lipgloss.JoinVertical(lipgloss.Left, centeredMain, centeredHints)
-	}
-
-	// Fallback for unknown dimensions
-	return lipgloss.JoinVertical(lipgloss.Center, mainContent, "", hints)
+	return m.renderStepContentWithNote(title, subtitle, optionsList, note)
 }
 
-// viewInputMode renders the input mode selection step.
-func (m OnboardingModel) viewInputMode() string {
-	title := styles.Bold.Render("INPUT MODE")
-	subtitle := styles.Subtle.Render("How would you like to answer?")
+// renderInputModeContent renders the input mode step content.
+func (m OnboardingModel) renderInputModeContent() string {
+	title := styles.Logo.Render("INPUT MODE")
+	subtitle := styles.Subtle.Render("How do you want to answer?")
 
 	var options []string
 	for i, opt := range inputModeOptions {
-		label := opt
-		if opt == "Typing" {
-			label = opt + " - Type your answers"
-		} else if opt == "Multiple Choice" {
-			label = opt + " - Select from options"
-		}
-		if i == m.cursor {
-			options = append(options, styles.Selected.Render("> "+label))
+		if i == m.inputModeIndex {
+			options = append(options, styles.Accent.Render("> ")+styles.Bold.Render(opt))
 		} else {
-			options = append(options, styles.Unselected.Render("  "+label))
+			options = append(options, "  "+styles.Unselected.Render(opt))
 		}
 	}
-
 	optionsList := lipgloss.JoinVertical(lipgloss.Left, options...)
 
-	progress := styles.Dim.Render(components.ProgressDots(5, totalSteps))
+	// Preview based on selected input mode
+	preview := m.renderInputModePreview()
 
-	mainContent := lipgloss.JoinVertical(lipgloss.Center,
+	return m.renderStepContentWithPreview(title, subtitle, optionsList, preview)
+}
+
+// Preview box dimensions (fixed size for consistent layout)
+const (
+	previewBoxWidth  = 34
+	previewBoxHeight = 5 // Inner content height (excludes border)
+)
+
+// renderInputModePreview renders a preview box showing how the selected input mode looks.
+func (m OnboardingModel) renderInputModePreview() string {
+	// Fixed-size box style for consistent layout
+	boxStyle := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color("8")).
+		Width(previewBoxWidth).
+		Height(previewBoxHeight)
+
+	// Question on its own line (matches game screen layout)
+	question := styles.Bold.Render("1 + 1 =")
+
+	var input string
+	if m.inputModeIndex == 0 {
+		// Typing preview: prompt, answer, and cursor (matches game screen)
+		prompt := styles.Dim.Render("> ")
+		answer := styles.Accent.Render("2")
+		cursor := styles.Dim.Render("█")
+		input = prompt + answer + cursor
+	} else {
+		// Multiple choice preview: four options
+		input = lipgloss.JoinHorizontal(lipgloss.Center,
+			styles.Dim.Render("[1] ")+"0",
+			"  ",
+			styles.Accent.Render("[2] ")+"2",
+			"  ",
+			styles.Dim.Render("[3] ")+"3",
+			"  ",
+			styles.Dim.Render("[4] ")+"1",
+		)
+	}
+
+	// Center the question horizontally
+	questionCentered := lipgloss.NewStyle().Width(previewBoxWidth).Align(lipgloss.Center).Render(question)
+
+	// Input alignment: both centered
+	inputStyled := lipgloss.NewStyle().Width(previewBoxWidth).Align(lipgloss.Center).Render(input)
+
+	// Fixed layout: empty line, question, empty line, input, empty line
+	content := lipgloss.JoinVertical(lipgloss.Left,
+		"",
+		questionCentered,
+		"",
+		inputStyled,
+		"",
+	)
+
+	return boxStyle.Render(content)
+}
+
+// renderStepContentWithPreview renders title, subtitle, options, and a preview centered in the viewport.
+func (m OnboardingModel) renderStepContentWithPreview(title, subtitle, options, preview string) string {
+	content := lipgloss.JoinVertical(lipgloss.Center,
 		title,
+		"",
 		subtitle,
 		"",
 		"",
-		optionsList,
+		"",
+		options,
 		"",
 		"",
-		progress,
+		preview,
 	)
 
-	hints := components.RenderHintsStructured([]components.Hint{
-		{Key: "←", Action: "Back"},
-		{Key: "↑↓", Action: "Navigate"},
-		{Key: "S", Action: "Skip"},
-		{Key: "→", Action: "Start"},
-	})
-
-	// Bottom-anchored hints layout with small gap at bottom
-	if m.width > 0 && m.height > 0 {
-		hintsHeight := lipgloss.Height(hints)
-		bottomPadding := 1
-		availableHeight := m.height - hintsHeight - bottomPadding
-
-		centeredMain := lipgloss.Place(m.width, availableHeight, lipgloss.Center, lipgloss.Center, mainContent)
-		centeredHints := lipgloss.Place(m.width, hintsHeight+bottomPadding, lipgloss.Center, lipgloss.Top, hints)
-
-		return lipgloss.JoinVertical(lipgloss.Left, centeredMain, centeredHints)
+	// Center both horizontally and vertically within viewport
+	if m.width > 0 && m.viewportReady {
+		return lipgloss.Place(m.width, m.viewport.Height, lipgloss.Center, lipgloss.Center, content)
 	}
-
-	// Fallback for unknown dimensions
-	return lipgloss.JoinVertical(lipgloss.Center, mainContent, "", hints)
+	return content
 }
 
-// SetSize updates the screen dimensions.
-func (m *OnboardingModel) SetSize(width, height int) {
-	m.width = width
-	m.height = height
+// renderStepContent renders title, subtitle, and options centered in the viewport.
+func (m OnboardingModel) renderStepContent(title, subtitle, options string) string {
+	content := lipgloss.JoinVertical(lipgloss.Center,
+		title,
+		"",
+		subtitle,
+		"",
+		"",
+		"",
+		options,
+	)
+
+	// Center both horizontally and vertically within viewport
+	if m.width > 0 && m.viewportReady {
+		return lipgloss.Place(m.width, m.viewport.Height, lipgloss.Center, lipgloss.Center, content)
+	}
+	return content
+}
+
+// renderStepContentWithNote renders title, subtitle, options, and a note centered in the viewport.
+func (m OnboardingModel) renderStepContentWithNote(title, subtitle, options, note string) string {
+	content := lipgloss.JoinVertical(lipgloss.Center,
+		title,
+		"",
+		subtitle,
+		"",
+		"",
+		"",
+		options,
+		"",
+		"",
+		note,
+	)
+
+	// Center both horizontally and vertically within viewport
+	if m.width > 0 && m.viewportReady {
+		return lipgloss.Place(m.width, m.viewport.Height, lipgloss.Center, lipgloss.Center, content)
+	}
+	return content
+}
+
+// renderReadyContent renders the ready screen with summary and controls.
+func (m OnboardingModel) renderReadyContent() string {
+	title := styles.Logo.Render("READY TO PLAY")
+
+	// Build summary of selections
+	mode := operationOptions[m.operationIndex].Label
+	difficulty := difficultyOptions[m.difficultyIndex]
+	duration := durationOptions[m.durationIndex].Label
+	inputMode := inputModeOptions[m.inputModeIndex]
+
+	summary := lipgloss.JoinVertical(lipgloss.Left,
+		styles.Dim.Render("Mode:       ")+styles.Bold.Render(mode),
+		styles.Dim.Render("Difficulty: ")+styles.Bold.Render(difficulty),
+		styles.Dim.Render("Duration:   ")+styles.Bold.Render(duration),
+		styles.Dim.Render("Input:      ")+styles.Bold.Render(inputMode),
+	)
+
+	// Build controls section based on input mode
+	var controls string
+	if m.inputModeIndex == 1 { // Multiple Choice
+		controls = lipgloss.JoinVertical(lipgloss.Left,
+			styles.Dim.Render("[1-4] ")+"Select answer",
+			styles.Dim.Render("[S]   ")+"Skip question",
+			styles.Dim.Render("[P]   ")+"Pause game",
+		)
+	} else { // Typing
+		controls = lipgloss.JoinVertical(lipgloss.Left,
+			styles.Dim.Render("[Enter] ")+"Submit answer",
+			styles.Dim.Render("[S]     ")+"Skip question",
+			styles.Dim.Render("[P]     ")+"Pause game",
+		)
+	}
+
+	controlsSection := lipgloss.JoinVertical(lipgloss.Left,
+		styles.Subtle.Render("Controls:"),
+		"",
+		controls,
+	)
+
+	// Combine summary and controls in a left-aligned block
+	infoBlock := lipgloss.JoinVertical(lipgloss.Left,
+		summary,
+		"",
+		"",
+		controlsSection,
+	)
+
+	// Motivational message
+	message := styles.Tagline.Render("You're all set!")
+
+	// Styled start instruction (white/bold instead of accent)
+	startInstruction := styles.Dim.Render("─── ") + styles.Bold.Render("Press → to Start") + styles.Dim.Render(" ───")
+
+	// Combine all parts - title centered, info block centered as a unit, message centered
+	content := lipgloss.JoinVertical(lipgloss.Center,
+		title,
+		"",
+		"",
+		infoBlock,
+		"",
+		"",
+		message,
+		"",
+		startInstruction,
+	)
+
+	// Center both horizontally and vertically within viewport
+	if m.width > 0 && m.viewportReady {
+		return lipgloss.Place(m.width, m.viewport.Height, lipgloss.Center, lipgloss.Center, content)
+	}
+	return content
 }
