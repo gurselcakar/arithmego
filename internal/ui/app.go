@@ -30,6 +30,7 @@ type App struct {
 	settingsModel    screens.SettingsModel
 	onboardingModel  screens.OnboardingModel
 	quitConfirmModel screens.QuitConfirmModel
+	featureTourModel screens.FeatureTourModel
 
 	// Current session state
 	session         *game.Session
@@ -46,6 +47,9 @@ type App struct {
 
 	// CLI start mode flags
 	startModeQuickPlay bool
+
+	// First game tracking (for feature tour after onboarding)
+	isFirstGame bool
 
 	// Update notification
 	updateInfo *update.Info
@@ -186,6 +190,8 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return a.updateOnboarding(msg)
 	case ScreenQuitConfirm:
 		return a.updateQuitConfirm(msg)
+	case ScreenFeatureTour:
+		return a.updateFeatureTour(msg)
 	}
 
 	return a, nil
@@ -265,7 +271,12 @@ func (a *App) updateGame(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if gom, ok := msg.(screens.GameOverMsg); ok {
 		a.session = gom.Session
 		a.saveSession()
-		a.resultsModel = screens.NewResults(a.session, a.lastSaveError)
+		// Use first game results if this is the onboarding game
+		if a.isFirstGame {
+			a.resultsModel = screens.NewResultsFirstGame(a.session, a.lastSaveError)
+		} else {
+			a.resultsModel = screens.NewResults(a.session, a.lastSaveError)
+		}
 		a.resultsModel.SetSize(a.width, a.height)
 		a.screen = ScreenResults
 		return a, a.resultsModel.Init()
@@ -285,6 +296,10 @@ func (a *App) updateGame(msg tea.Msg) (tea.Model, tea.Cmd) {
 		a.session = qm.Session
 		// Check if user has disabled quit confirmation
 		if a.config != nil && a.config.SkipQuitConfirmation {
+			// If first game, go to feature tour instead of menu
+			if a.isFirstGame {
+				return a.startFeatureTour()
+			}
 			a.rebuildMenu()
 			a.screen = ScreenMenu
 			a.session = nil
@@ -318,6 +333,10 @@ func (a *App) updatePause(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	// Check for quit to menu (direct quit, skipping confirmation)
 	if _, ok := msg.(screens.QuitToMenuMsg); ok {
+		// If first game, go to feature tour instead of menu
+		if a.isFirstGame {
+			return a.startFeatureTour()
+		}
 		a.rebuildMenu()
 		a.screen = ScreenMenu
 		a.session = nil
@@ -329,6 +348,10 @@ func (a *App) updatePause(msg tea.Msg) (tea.Model, tea.Cmd) {
 		a.session = qm.Session
 		// Check if user has disabled quit confirmation
 		if a.config != nil && a.config.SkipQuitConfirmation {
+			// If first game, go to feature tour instead of menu
+			if a.isFirstGame {
+				return a.startFeatureTour()
+			}
 			a.rebuildMenu()
 			a.screen = ScreenMenu
 			a.session = nil
@@ -360,6 +383,11 @@ func (a *App) updateResults(msg tea.Msg) (tea.Model, tea.Cmd) {
 		a.screen = ScreenMenu
 		a.session = nil
 		return a, nil
+	}
+
+	// Check for continue to feature tour (first game only)
+	if _, ok := msg.(screens.ContinueToFeatureTourMsg); ok {
+		return a.startFeatureTour()
 	}
 
 	return a, cmd
@@ -446,11 +474,15 @@ func (a *App) updateQuitConfirm(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return a, nil
 	}
 
-	// Handle accept - save preference if checked and go to menu
+	// Handle accept - save preference if checked and go to menu (or feature tour for first game)
 	if acceptMsg, ok := msg.(screens.QuitConfirmAcceptMsg); ok {
 		if acceptMsg.DontAskAgain && a.config != nil {
 			a.config.SkipQuitConfirmation = true
 			_ = storage.SaveConfig(a.config)
+		}
+		// If first game, go to feature tour instead of menu
+		if a.isFirstGame {
+			return a.startFeatureTour()
 		}
 		a.rebuildMenu()
 		a.screen = ScreenMenu
@@ -459,6 +491,38 @@ func (a *App) updateQuitConfirm(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	return a, cmd
+}
+
+// updateFeatureTour handles feature tour screen updates.
+func (a *App) updateFeatureTour(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
+	a.featureTourModel, cmd = a.featureTourModel.Update(msg)
+
+	// Check for feature tour completion (or skip)
+	if _, ok := msg.(screens.FeatureTourCompleteMsg); ok {
+		a.isFirstGame = false
+		a.rebuildMenu()
+		a.screen = ScreenMenu
+		a.session = nil
+		return a, nil
+	}
+
+	return a, cmd
+}
+
+// startFeatureTour creates the feature tour and transitions to it.
+func (a *App) startFeatureTour() (tea.Model, tea.Cmd) {
+	// Reset first game flag - single point of truth
+	a.isFirstGame = false
+	// Save session if it exists (user quit mid-game)
+	if a.session != nil {
+		a.saveSession()
+	}
+	a.featureTourModel = screens.NewFeatureTour()
+	a.featureTourModel.SetSize(a.width, a.height)
+	a.screen = ScreenFeatureTour
+	a.session = nil
+	return a, a.featureTourModel.Init()
 }
 
 // completeOnboarding finishes onboarding and starts the game with selected settings.
@@ -477,10 +541,14 @@ func (a *App) completeOnboarding(modeID, difficulty string, durationMs int64, in
 	// Save config (ignore errors - config is non-critical)
 	_ = storage.SaveConfig(a.config)
 
+	// Mark this as the first game (for feature tour after completion)
+	a.isFirstGame = true
+
 	// Set up game state
 	mode, ok := modes.Get(modeID)
 	if !ok || mode == nil {
 		// Mode doesn't exist - fall back to Play screen
+		a.isFirstGame = false
 		a.playModel = screens.NewPlay(a.config)
 		a.playModel.SetSize(a.width, a.height)
 		a.screen = ScreenPlay
@@ -500,6 +568,7 @@ func (a *App) completeOnboarding(modeID, difficulty string, durationMs int64, in
 func (a *App) startGame() (tea.Model, tea.Cmd) {
 	if a.currentMode == nil || len(a.currentMode.Operations) == 0 {
 		// Gracefully recover: return to Play screen instead of crashing
+		a.isFirstGame = false // Reset flag on error
 		a.playModel = screens.NewPlay(a.config)
 		a.playModel.SetSize(a.width, a.height)
 		a.screen = ScreenPlay
@@ -584,6 +653,8 @@ func (a *App) View() string {
 		return a.onboardingModel.View()
 	case ScreenQuitConfirm:
 		return a.quitConfirmModel.View()
+	case ScreenFeatureTour:
+		return a.featureTourModel.View()
 	default:
 		return ""
 	}

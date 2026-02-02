@@ -213,3 +213,17 @@ func (s *Session) AvgResponseTime() time.Duration {
 	}
 	return total / time.Duration(count)
 }
+
+// FastestResponseTime returns the fastest response time for correct answers.
+// Returns 0 if no correct answers exist.
+func (s *Session) FastestResponseTime() time.Duration {
+	var fastest time.Duration
+	for _, h := range s.History {
+		if h.Correct && !h.Skipped {
+			if fastest == 0 || h.ResponseTime < fastest {
+				fastest = h.ResponseTime
+			}
+		}
+	}
+	return fastest
+}

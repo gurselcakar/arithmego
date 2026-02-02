@@ -14,17 +14,28 @@ import (
 
 // ResultsModel represents the results screen.
 type ResultsModel struct {
-	session   *game.Session
-	saveError error
-	width     int
-	height    int
+	session     *game.Session
+	saveError   error
+	isFirstGame bool
+	width       int
+	height      int
 }
 
 // NewResults creates a new results model.
 func NewResults(session *game.Session, saveError error) ResultsModel {
 	return ResultsModel{
-		session:   session,
-		saveError: saveError,
+		session:     session,
+		saveError:   saveError,
+		isFirstGame: false,
+	}
+}
+
+// NewResultsFirstGame creates a new results model for the first game (after onboarding).
+func NewResultsFirstGame(session *game.Session, saveError error) ResultsModel {
+	return ResultsModel{
+		session:     session,
+		saveError:   saveError,
+		isFirstGame: true,
 	}
 }
 
@@ -39,6 +50,9 @@ type PlayAgainMsg struct{}
 // ReturnToMenuMsg is sent when the user returns to the menu.
 type ReturnToMenuMsg struct{}
 
+// ContinueToFeatureTourMsg is sent when continuing from first game results.
+type ContinueToFeatureTourMsg struct{}
+
 // Update handles results screen input.
 func (m ResultsModel) Update(msg tea.Msg) (ResultsModel, tea.Cmd) {
 	switch msg := msg.(type) {
@@ -48,14 +62,25 @@ func (m ResultsModel) Update(msg tea.Msg) (ResultsModel, tea.Cmd) {
 		return m, nil
 
 	case tea.KeyMsg:
-		switch msg.String() {
-		case "enter":
-			return m, func() tea.Msg {
-				return PlayAgainMsg{}
+		if m.isFirstGame {
+			// First game: only continue to feature tour
+			switch msg.String() {
+			case "enter", "right", "l":
+				return m, func() tea.Msg {
+					return ContinueToFeatureTourMsg{}
+				}
 			}
-		case "m", "esc":
-			return m, func() tea.Msg {
-				return ReturnToMenuMsg{}
+		} else {
+			// Normal game: play again or menu
+			switch msg.String() {
+			case "enter":
+				return m, func() tea.Msg {
+					return PlayAgainMsg{}
+				}
+			case "m", "esc":
+				return m, func() tea.Msg {
+					return ReturnToMenuMsg{}
+				}
 			}
 		}
 	}
@@ -68,30 +93,63 @@ func (m ResultsModel) View() string {
 	var b strings.Builder
 
 	// Title
-	title := styles.Bold.Render("SESSION COMPLETE")
+	title := styles.Bold.Render("RESULTS")
 
 	// Score (prominent)
 	score := components.RenderScore(m.session.Score)
 	scoreLabel := styles.Dim.Render("points")
 
 	// Separator
-	separator := styles.Dim.Render("────────────────────")
+	separator := styles.Dim.Render("─────────────────────")
 
-	// Stats
+	// Stats line 1: correct count and accuracy
 	correct := fmt.Sprintf("%d/%d correct", m.session.Correct, m.session.TotalAnswered())
-	accuracy := fmt.Sprintf("%.0f%% accuracy", m.session.Accuracy())
+	accuracy := fmt.Sprintf("%.0f%%", m.session.Accuracy())
+	statsLine1 := correct + " · " + accuracy
+
+	// Build detailed stats
+	var statLines []string
 
 	// Best streak (only show if > 0)
-	var bestStreak string
 	if m.session.BestStreak > 0 {
-		bestStreak = fmt.Sprintf("Best streak: %d", m.session.BestStreak)
+		statLines = append(statLines, fmt.Sprintf("Best streak   %5d", m.session.BestStreak))
 	}
 
-	// Hints
-	hints := components.RenderHintsStructured([]components.Hint{
-		{Key: "M", Action: "Menu"},
-		{Key: "Enter", Action: "Play Again"},
-	})
+	// Average response time
+	avgTime := m.session.AvgResponseTime()
+	if avgTime > 0 {
+		statLines = append(statLines, fmt.Sprintf("Avg response  %5.2fs", avgTime.Seconds()))
+	}
+
+	// Fastest response time (only for correct answers)
+	fastestTime := m.session.FastestResponseTime()
+	if fastestTime > 0 {
+		statLines = append(statLines, fmt.Sprintf("Fastest       %5.2fs", fastestTime.Seconds()))
+	}
+
+	// Skipped (only show if > 0)
+	if m.session.Skipped > 0 {
+		statLines = append(statLines, fmt.Sprintf("Skipped       %5d", m.session.Skipped))
+	}
+
+	// Intro message for first game (before feature tour)
+	var introMessage string
+	if m.isFirstGame {
+		introMessage = styles.Tagline.Render("Let's see what else you can do.")
+	}
+
+	// Hints based on game type
+	var hints string
+	if m.isFirstGame {
+		hints = components.RenderHintsStructured([]components.Hint{
+			{Key: "→", Action: "Continue"},
+		})
+	} else {
+		hints = components.RenderHintsStructured([]components.Hint{
+			{Key: "M", Action: "Menu"},
+			{Key: "↵", Action: "Play Again"},
+		})
+	}
 
 	// Save error warning (if any)
 	var saveWarning string
@@ -99,17 +157,25 @@ func (m ResultsModel) View() string {
 		saveWarning = styles.Dim.Render("(Statistics could not be saved)")
 	}
 
-	// Build main content (without hints)
+	// Build main content
 	var contentParts []string
 	contentParts = append(contentParts, title, "", "")
 	contentParts = append(contentParts, score, scoreLabel, "")
 	contentParts = append(contentParts, separator, "")
-	contentParts = append(contentParts, correct, accuracy)
-	if bestStreak != "" {
-		contentParts = append(contentParts, bestStreak)
+	contentParts = append(contentParts, statsLine1, "")
+
+	// Add detailed stat lines
+	for _, line := range statLines {
+		contentParts = append(contentParts, line)
 	}
+
 	if saveWarning != "" {
 		contentParts = append(contentParts, "", saveWarning)
+	}
+
+	// Add intro message for first game
+	if introMessage != "" {
+		contentParts = append(contentParts, "", separator, "", introMessage)
 	}
 
 	mainContent := lipgloss.JoinVertical(lipgloss.Center, contentParts...)

@@ -14,6 +14,7 @@ const (
 	ScreenSettings     // Phase 8
 	ScreenOnboarding   // Phase 9
 	ScreenQuitConfirm  // Phase 11
+	ScreenFeatureTour  // Post-onboarding feature introduction
 )
 
 // StartMode determines how the app should start (used by CLI commands).

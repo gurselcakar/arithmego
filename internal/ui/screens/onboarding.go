@@ -515,10 +515,7 @@ func (m OnboardingModel) renderOperationContent() string {
 	}
 	optionsList := lipgloss.JoinVertical(lipgloss.Left, options...)
 
-	// Add note about more modes
-	note := styles.Dim.Render("More modes available in Play menu")
-
-	return m.renderStepContentWithNote(title, subtitle, optionsList, note)
+	return m.renderStepContent(title, subtitle, optionsList)
 }
 
 // renderInputModeContent renders the input mode step content.
@@ -708,21 +705,16 @@ func (m OnboardingModel) renderReadyContent() string {
 		controlsSection,
 	)
 
-	// Motivational message
-	message := styles.Tagline.Render("You're all set!")
+	// Styled start instruction (dim like key hints)
+	startInstruction := styles.Dim.Render("─── Press → to Start ───")
 
-	// Styled start instruction (white/bold instead of accent)
-	startInstruction := styles.Dim.Render("─── ") + styles.Bold.Render("Press → to Start") + styles.Dim.Render(" ───")
-
-	// Combine all parts - title centered, info block centered as a unit, message centered
+	// Combine all parts - title centered, info block centered as a unit
 	content := lipgloss.JoinVertical(lipgloss.Center,
 		title,
 		"",
 		"",
 		infoBlock,
 		"",
-		"",
-		message,
 		"",
 		startInstruction,
 	)
