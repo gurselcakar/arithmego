@@ -159,26 +159,33 @@ func RenderBarChart(data []analytics.WeeklyData, maxWidth int) string {
 	// Calculate label width
 	labelWidth := 8 // "Week N: " or date range
 
+	// Calculate bar width
+	barWidth := maxWidth - labelWidth - 15 // Leave room for count
+	if barWidth < 5 {
+		barWidth = 5
+	}
+
 	var b strings.Builder
 	for _, d := range data {
 		// Render label
 		label := fmt.Sprintf("%-8s ", d.Label)
 		b.WriteString(styles.Dim.Render(label))
 
-		// Render bar
-		barWidth := maxWidth - labelWidth - 15 // Leave room for count
-		if barWidth < 5 {
-			barWidth = 5
-		}
+		// Render bar (fixed width with padding)
 		filled := d.Sessions * barWidth / maxSessions
 		if filled < 1 && d.Sessions > 0 {
 			filled = 1
 		}
-		bar := strings.Repeat("█", filled)
+		empty := barWidth - filled
+		bar := strings.Repeat("█", filled) + strings.Repeat(" ", empty)
 		b.WriteString(styles.Correct.Render(bar))
 
-		// Render count
-		b.WriteString(fmt.Sprintf("  %d sessions\n", d.Sessions))
+		// Render count (singular/plural, fixed width)
+		sessionWord := "sessions"
+		if d.Sessions == 1 {
+			sessionWord = "session "
+		}
+		b.WriteString(fmt.Sprintf("  %2d %s\n", d.Sessions, sessionWord))
 	}
 
 	return strings.TrimSuffix(b.String(), "\n")
