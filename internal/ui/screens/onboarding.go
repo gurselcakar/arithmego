@@ -61,11 +61,11 @@ var difficultyOptions = []string{
 }
 
 var operationOptions = []operationOption{
-	{"Addition", modes.IDAdditionSprint},
-	{"Subtraction", modes.IDSubtractionSprint},
-	{"Multiplication", modes.IDMultiplicationSprint},
-	{"Division", modes.IDDivisionSprint},
-	{"Mixed Operations", modes.IDMixedOperations},
+	{"Addition", modes.IDAddition},
+	{"Subtraction", modes.IDSubtraction},
+	{"Multiplication", modes.IDMultiplication},
+	{"Division", modes.IDDivision},
+	{"Mixed Basics", modes.IDMixedBasics},
 }
 
 var inputModeOptions = []string{

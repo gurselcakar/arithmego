@@ -62,7 +62,7 @@ Multiple modes available. Mode selection screen, mode launch with settings.
 
 Includes:
 - Mode struct with operations, difficulty, duration
-- 7 preset modes: 4 sprints + Mixed Operations + Speed Round + Endurance
+- 16 preset modes: 12 single-operation + 4 mixed modes
 - Modes screen with category grouping (Sprint/Challenge)
 - Launch screen with difficulty and duration selectors
 - Session support for multiple operations (random selection per question)

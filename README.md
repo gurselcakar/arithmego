@@ -24,7 +24,7 @@ ArithmeGo fills the small gaps while your AI agent works. Short sessions. Minima
   - **Advanced:** Modulo, Power, Percentage, Factorial
 - 5 difficulty tiers (Beginner to Expert) with intelligent difficulty scoring
 - Timed sessions (30s, 60s, 90s, 2min)
-- 7 game modes (4 sprints + Mixed Operations + Speed Round + Endurance)
+- 16 game modes (12 single-operation + 4 mixed modes)
 - Arcade-style scoring with streaks and multipliers
 - Local statistics tracking with per-session and per-question data
 - Terminal-native design (inherits your theme)

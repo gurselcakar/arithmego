@@ -419,7 +419,7 @@ func (a *App) updateOnboarding(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	// Handle onboarding skip - use defaults (Easy, 60s, Addition, Typing)
 	if _, ok := msg.(screens.OnboardingSkipMsg); ok {
-		return a.completeOnboarding(modes.IDAdditionSprint, "Easy", 60000, "typing")
+		return a.completeOnboarding(modes.IDAddition, "Easy", 60000, "typing")
 	}
 
 	return a, cmd

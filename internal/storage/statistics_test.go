@@ -27,7 +27,7 @@ func TestComputeAggregates_SingleSession(t *testing.T) {
 		Sessions: []SessionRecord{
 			{
 				ID:                 "test-1",
-				Mode:               "Addition Sprint",
+				Mode:               "Addition",
 				Difficulty:         "Medium",
 				DurationSeconds:    60,
 				QuestionsAttempted: 10,
@@ -79,12 +79,12 @@ func TestComputeAggregates_SingleSession(t *testing.T) {
 	}
 
 	// Check mode stats
-	modeCount, ok := agg.ByMode["Addition Sprint"]
+	modeCount, ok := agg.ByMode["Addition"]
 	if !ok {
-		t.Fatal("Addition Sprint mode not found")
+		t.Fatal("Addition mode not found")
 	}
 	if modeCount != 1 {
-		t.Errorf("Addition Sprint count = %d, want 1", modeCount)
+		t.Errorf("Addition count = %d, want 1", modeCount)
 	}
 }
 
@@ -93,7 +93,7 @@ func TestComputeAggregates_MultipleSessions(t *testing.T) {
 		Sessions: []SessionRecord{
 			{
 				ID:                 "test-1",
-				Mode:               "Addition Sprint",
+				Mode:               "Addition",
 				QuestionsAttempted: 10,
 				QuestionsCorrect:   8,
 				BestStreak:         5,
@@ -104,7 +104,7 @@ func TestComputeAggregates_MultipleSessions(t *testing.T) {
 			},
 			{
 				ID:                 "test-2",
-				Mode:               "Mixed Operations",
+				Mode:               "Mixed Basics",
 				QuestionsAttempted: 20,
 				QuestionsCorrect:   15,
 				BestStreak:         12,
@@ -116,7 +116,7 @@ func TestComputeAggregates_MultipleSessions(t *testing.T) {
 			},
 			{
 				ID:                 "test-3",
-				Mode:               "Addition Sprint",
+				Mode:               "Addition",
 				QuestionsAttempted: 15,
 				QuestionsCorrect:   10,
 				BestStreak:         7,
@@ -143,11 +143,11 @@ func TestComputeAggregates_MultipleSessions(t *testing.T) {
 	}
 
 	// Check mode counts
-	if agg.ByMode["Addition Sprint"] != 2 {
-		t.Errorf("Addition Sprint count = %d, want 2", agg.ByMode["Addition Sprint"])
+	if agg.ByMode["Addition"] != 2 {
+		t.Errorf("Addition count = %d, want 2", agg.ByMode["Addition"])
 	}
-	if agg.ByMode["Mixed Operations"] != 1 {
-		t.Errorf("Mixed Operations count = %d, want 1", agg.ByMode["Mixed Operations"])
+	if agg.ByMode["Mixed Basics"] != 1 {
+		t.Errorf("Mixed Basics count = %d, want 1", agg.ByMode["Mixed Basics"])
 	}
 
 	// Check operation aggregation across sessions

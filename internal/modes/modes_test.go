@@ -17,8 +17,8 @@ func init() {
 
 func TestRegisterPresets(t *testing.T) {
 	modes := All()
-	if len(modes) != 7 {
-		t.Errorf("expected 7 preset modes, got %d", len(modes))
+	if len(modes) != 16 {
+		t.Errorf("expected 16 preset modes, got %d", len(modes))
 	}
 }
 
@@ -27,13 +27,26 @@ func TestGetMode(t *testing.T) {
 		id       string
 		expected string
 	}{
-		{IDAdditionSprint, "Addition Sprint"},
-		{IDSubtractionSprint, "Subtraction Sprint"},
-		{IDMultiplicationSprint, "Multiplication Sprint"},
-		{IDDivisionSprint, "Division Sprint"},
-		{IDMixedOperations, "Mixed Operations"},
-		{IDSpeedRound, "Speed Round"},
-		{IDEndurance, "Endurance"},
+		// Basic operations
+		{IDAddition, "Addition"},
+		{IDSubtraction, "Subtraction"},
+		{IDMultiplication, "Multiplication"},
+		{IDDivision, "Division"},
+		// Power operations
+		{IDSquares, "Squares"},
+		{IDCubes, "Cubes"},
+		{IDSquareRoots, "Square Roots"},
+		{IDCubeRoots, "Cube Roots"},
+		// Advanced operations
+		{IDExponents, "Exponents"},
+		{IDRemainders, "Remainders"},
+		{IDPercentages, "Percentages"},
+		{IDFactorials, "Factorials"},
+		// Mixed modes
+		{IDMixedBasics, "Mixed Basics"},
+		{IDMixedPowers, "Mixed Powers"},
+		{IDMixedAdvanced, "Mixed Advanced"},
+		{IDAnythingGoes, "Anything Goes"},
 	}
 
 	for _, tt := range tests {
@@ -58,13 +71,13 @@ func TestGetModeNotFound(t *testing.T) {
 
 func TestModesByCategory(t *testing.T) {
 	sprintModes := ByCategory(CategorySprint)
-	if len(sprintModes) != 4 {
-		t.Errorf("expected 4 sprint modes, got %d", len(sprintModes))
+	if len(sprintModes) != 12 {
+		t.Errorf("expected 12 sprint modes, got %d", len(sprintModes))
 	}
 
 	challengeModes := ByCategory(CategoryChallenge)
-	if len(challengeModes) != 3 {
-		t.Errorf("expected 3 challenge modes, got %d", len(challengeModes))
+	if len(challengeModes) != 4 {
+		t.Errorf("expected 4 challenge modes, got %d", len(challengeModes))
 	}
 }
 
@@ -77,36 +90,55 @@ func TestSprintModesHaveSingleOperation(t *testing.T) {
 	}
 }
 
-func TestMixedOperationsHasMultipleOperations(t *testing.T) {
-	mode, ok := Get(IDMixedOperations)
+func TestMixedBasicsHasMultipleOperations(t *testing.T) {
+	mode, ok := Get(IDMixedBasics)
 	if !ok {
-		t.Fatal("Mixed Operations mode not found")
+		t.Fatal("Mixed Basics mode not found")
 	}
 	if mode.IsSingleOperation() {
-		t.Error("Mixed Operations should have multiple operations")
+		t.Error("Mixed Basics should have multiple operations")
 	}
 	if len(mode.Operations) != 4 {
-		t.Errorf("Mixed Operations should have 4 operations, got %d", len(mode.Operations))
+		t.Errorf("Mixed Basics should have 4 operations, got %d", len(mode.Operations))
 	}
 }
 
-func TestSpeedRoundDuration(t *testing.T) {
-	mode, ok := Get(IDSpeedRound)
+func TestMixedPowersHasMultipleOperations(t *testing.T) {
+	mode, ok := Get(IDMixedPowers)
 	if !ok {
-		t.Fatal("Speed Round mode not found")
+		t.Fatal("Mixed Powers mode not found")
 	}
-	if mode.DefaultDuration != 30*time.Second {
-		t.Errorf("Speed Round should have 30s duration, got %v", mode.DefaultDuration)
+	if mode.IsSingleOperation() {
+		t.Error("Mixed Powers should have multiple operations")
+	}
+	if len(mode.Operations) != 4 {
+		t.Errorf("Mixed Powers should have 4 operations, got %d", len(mode.Operations))
 	}
 }
 
-func TestEnduranceDuration(t *testing.T) {
-	mode, ok := Get(IDEndurance)
+func TestMixedAdvancedHasMultipleOperations(t *testing.T) {
+	mode, ok := Get(IDMixedAdvanced)
 	if !ok {
-		t.Fatal("Endurance mode not found")
+		t.Fatal("Mixed Advanced mode not found")
 	}
-	if mode.DefaultDuration != 2*time.Minute {
-		t.Errorf("Endurance should have 2min duration, got %v", mode.DefaultDuration)
+	if mode.IsSingleOperation() {
+		t.Error("Mixed Advanced should have multiple operations")
+	}
+	if len(mode.Operations) != 4 {
+		t.Errorf("Mixed Advanced should have 4 operations, got %d", len(mode.Operations))
+	}
+}
+
+func TestAnythingGoesHasAllOperations(t *testing.T) {
+	mode, ok := Get(IDAnythingGoes)
+	if !ok {
+		t.Fatal("Anything Goes mode not found")
+	}
+	if mode.IsSingleOperation() {
+		t.Error("Anything Goes should have multiple operations")
+	}
+	if len(mode.Operations) != 12 {
+		t.Errorf("Anything Goes should have 12 operations, got %d", len(mode.Operations))
 	}
 }
 
@@ -120,9 +152,9 @@ func TestModeCategoryString(t *testing.T) {
 }
 
 func TestModeOperationNames(t *testing.T) {
-	mode, ok := Get(IDMixedOperations)
+	mode, ok := Get(IDMixedBasics)
 	if !ok {
-		t.Fatal("Mixed Operations mode not found")
+		t.Fatal("Mixed Basics mode not found")
 	}
 	names := mode.OperationNames()
 	if len(names) != 4 {

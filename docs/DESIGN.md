@@ -95,15 +95,31 @@ Wrong answers incur a small penalty. Skips reset streak but no penalty.
 
 ## Game Modes
 
-### Core Modes
+### Single Operation Modes
 
-- **Addition Sprint** — Addition only
-- **Subtraction Sprint** — Subtraction only
-- **Multiplication Sprint** — Multiplication only
-- **Division Sprint** — Division only
-- **Mixed Operations** — All four operators
-- **Speed Round** — 30 seconds, all operators
-- **Endurance** — 2 minutes, all operators
+| Category | Mode | Description |
+|----------|------|-------------|
+| **Basic** | Addition | + |
+| | Subtraction | − |
+| | Multiplication | × |
+| | Division | ÷ |
+| **Power** | Squares | n² |
+| | Cubes | n³ |
+| | Square Roots | √n |
+| | Cube Roots | ³√n |
+| **Advanced** | Exponents | aⁿ |
+| | Remainders | mod |
+| | Percentages | % |
+| | Factorials | n! |
+
+### Mixed Modes
+
+| Mode | Description |
+|------|-------------|
+| **Mixed Basics** | Random mix of + − × ÷ |
+| **Mixed Powers** | Random mix of n² n³ √n ³√n |
+| **Mixed Advanced** | Random mix of mod % n! aⁿ |
+| **Anything Goes** | Random mix of all 12 operations |
 
 ### Practice Mode
 
