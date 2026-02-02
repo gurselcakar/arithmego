@@ -33,9 +33,15 @@ A command-line arithmetic game for developers. Built with Go, Bubble Tea, and Co
 
 ## Installation
 
+### macOS / Linux
+
 ```bash
 curl -fsSL https://arithmego.com/install.sh | bash
 ```
+
+### Windows
+
+Download the latest `.zip` from [Releases](https://github.com/gurselcakar/arithmego/releases), extract, and add to your PATH.
 
 **Supported platforms:**
 
@@ -43,6 +49,7 @@ curl -fsSL https://arithmego.com/install.sh | bash
 |----|--------------|
 | macOS | arm64, amd64 |
 | Linux | arm64, amd64 |
+| Windows | arm64, amd64 |
 
 ---
 

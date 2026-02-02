@@ -99,12 +99,16 @@ Each screen is a self-contained Bubble Tea model.
 
 ## Data Storage
 
-All user data is stored locally:
+All user data is stored locally in the system config directory:
 
-```
-~/.config/arithmego/
-  config.json       User preferences
-  statistics.json   Game history and stats
-```
+| OS | Location |
+|----|----------|
+| macOS | `~/Library/Application Support/arithmego/` |
+| Linux | `~/.config/arithmego/` |
+| Windows | `%AppData%\arithmego\` |
+
+**Files:**
+- `config.json` — User preferences
+- `statistics.json` — Game history and stats
 
 No data is sent externally. The update checker only fetches release metadata from GitHub.
