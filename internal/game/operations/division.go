@@ -2,7 +2,6 @@ package operations
 
 import (
 	"fmt"
-	"math"
 
 	"github.com/gurselcakar/arithmego/internal/game"
 )
@@ -14,9 +13,9 @@ func init() {
 // Division implements the division operation.
 type Division struct{}
 
-func (d *Division) Name() string           { return "Division" }
-func (d *Division) Symbol() string         { return "÷" }
-func (d *Division) Arity() game.Arity      { return game.Binary }
+func (d *Division) Name() string            { return "Division" }
+func (d *Division) Symbol() string          { return "÷" }
+func (d *Division) Arity() game.Arity       { return game.Binary }
 func (d *Division) Category() game.Category { return game.CategoryBasic }
 
 // Apply computes operands[0] / operands[1].
@@ -91,64 +90,63 @@ func (d *Division) ScoreDifficulty(operands []int, answer int) float64 {
 }
 
 func (d *Division) Generate(diff game.Difficulty) game.Question {
-	minScore, maxScore := diff.ScoreRange()
+	return generateWithFallback(d, diff, d.makeCandidate, d.makeCandidateRelaxed)
+}
 
-	// bestQuestion tracks the closest match if no exact match is found.
-	// Since bestDistance starts at MaxFloat64 and distanceFromRange always returns
-	// a finite value, the first iteration is guaranteed to populate bestQuestion.
-	var bestQuestion game.Question
-	bestDistance := math.MaxFloat64
-
-	for attempts := 0; attempts < 100; attempts++ {
-		// Generate backwards: quotient × divisor = dividend
-		var divisor, quotient int
-		switch diff {
-		case game.Beginner:
-			divisor = randomInRange(2, 9)
-			quotient = randomInRange(2, 9)
-		case game.Easy:
-			divisor = randomInRange(2, 12)
-			quotient = randomInRange(2, 12)
-		case game.Medium:
-			divisor = randomInRange(3, 15)
-			quotient = randomInRange(5, 20)
-		case game.Hard:
-			divisor = randomInRange(5, 20)
-			quotient = randomInRange(10, 30)
-		case game.Expert:
-			divisor = randomInRange(10, 30)
-			quotient = randomInRange(15, 50)
-		default:
-			divisor = randomInRange(2, 9)
-			quotient = randomInRange(2, 9)
-		}
-
-		dividend := divisor * quotient
-		operands := []int{dividend, divisor}
-		score := d.ScoreDifficulty(operands, quotient)
-
-		// Check if within range
-		if score >= minScore && score <= maxScore {
-			return game.Question{
-				Operands:  operands,
-				Operation: d,
-				Answer:    quotient,
-				Display:   d.Format(operands),
-			}
-		}
-
-		// Track closest match
-		dist := distanceFromRange(score, minScore, maxScore)
-		if dist < bestDistance {
-			bestDistance = dist
-			bestQuestion = game.Question{
-				Operands:  operands,
-				Operation: d,
-				Answer:    quotient,
-				Display:   d.Format(operands),
-			}
-		}
+// makeCandidate generates a candidate by working backwards: quotient × divisor = dividend.
+func (d *Division) makeCandidate(diff game.Difficulty) (Candidate, bool) {
+	var divisor, quotient int
+	switch diff {
+	case game.Beginner:
+		divisor = randomInRange(2, 9)
+		quotient = randomInRange(2, 9)
+	case game.Easy:
+		divisor = randomInRange(2, 12)
+		quotient = randomInRange(2, 12)
+	case game.Medium:
+		divisor = randomInRange(3, 15)
+		quotient = randomInRange(5, 20)
+	case game.Hard:
+		divisor = randomInRange(5, 20)
+		quotient = randomInRange(10, 30)
+	case game.Expert:
+		divisor = randomInRange(10, 30)
+		quotient = randomInRange(15, 50)
+	default:
+		divisor = randomInRange(2, 9)
+		quotient = randomInRange(2, 9)
 	}
 
-	return bestQuestion
+	dividend := divisor * quotient
+	return Candidate{Operands: []int{dividend, divisor}, Answer: quotient}, true
+}
+
+// makeCandidateRelaxed generates a candidate with expanded ranges.
+func (d *Division) makeCandidateRelaxed(diff game.Difficulty) (Candidate, bool) {
+	var minDiv, maxDiv, minQuot, maxQuot int
+	switch diff {
+	case game.Beginner:
+		minDiv, maxDiv = 2, 12
+		minQuot, maxQuot = 2, 12
+	case game.Easy:
+		minDiv, maxDiv = 2, 15
+		minQuot, maxQuot = 2, 15
+	case game.Medium:
+		minDiv, maxDiv = 2, 20
+		minQuot, maxQuot = 3, 30
+	case game.Hard:
+		minDiv, maxDiv = 3, 30
+		minQuot, maxQuot = 5, 50
+	case game.Expert:
+		minDiv, maxDiv = 5, 40
+		minQuot, maxQuot = 10, 75
+	default:
+		minDiv, maxDiv = 2, 12
+		minQuot, maxQuot = 2, 12
+	}
+
+	divisor := randomInRange(minDiv, maxDiv)
+	quotient := randomInRange(minQuot, maxQuot)
+	dividend := divisor * quotient
+	return Candidate{Operands: []int{dividend, divisor}, Answer: quotient}, true
 }

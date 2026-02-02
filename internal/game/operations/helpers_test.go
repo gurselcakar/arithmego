@@ -174,6 +174,15 @@ func TestIntPow(t *testing.T) {
 	}
 }
 
+func TestIntPowPanicsOnNegativeExponent(t *testing.T) {
+	defer func() {
+		if r := recover(); r == nil {
+			t.Error("Expected panic for negative exponent")
+		}
+	}()
+	intPow(2, -1)
+}
+
 func TestFactorialHelper(t *testing.T) {
 	tests := []struct {
 		n      int
@@ -194,6 +203,46 @@ func TestFactorialHelper(t *testing.T) {
 		if got := factorial(tt.n); got != tt.expect {
 			t.Errorf("factorial(%d) = %d, want %d", tt.n, got, tt.expect)
 		}
+	}
+}
+
+func TestFactorialPanicsOnNegativeInput(t *testing.T) {
+	defer func() {
+		if r := recover(); r == nil {
+			t.Error("Expected panic for negative factorial input")
+		}
+	}()
+	factorial(-1)
+}
+
+func TestIsAcceptableFallback(t *testing.T) {
+	tests := []struct {
+		distance float64
+		expect   bool
+	}{
+		{0.0, true},              // Exact match
+		{0.5, true},              // Small deviation
+		{1.0, true},              // Moderate deviation
+		{1.5, true},              // At threshold
+		{1.6, false},             // Just over threshold
+		{2.0, false},             // Over threshold
+		{5.0, false},             // Way over threshold
+	}
+
+	for _, tt := range tests {
+		if got := isAcceptableFallback(tt.distance); got != tt.expect {
+			t.Errorf("isAcceptableFallback(%v) = %v, want %v", tt.distance, got, tt.expect)
+		}
+	}
+}
+
+func TestMaxAcceptableDistanceConstant(t *testing.T) {
+	// Verify the constant is set to a reasonable value
+	if maxAcceptableDistance <= 0 {
+		t.Error("maxAcceptableDistance should be positive")
+	}
+	if maxAcceptableDistance > 3.0 {
+		t.Error("maxAcceptableDistance should not be too large (would accept very poor matches)")
 	}
 }
 

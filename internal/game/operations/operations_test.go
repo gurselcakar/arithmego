@@ -182,6 +182,15 @@ func TestDivision(t *testing.T) {
 			}
 		}
 	})
+
+	t.Run("apply panics on division by zero", func(t *testing.T) {
+		defer func() {
+			if r := recover(); r == nil {
+				t.Error("Expected panic for division by zero")
+			}
+		}()
+		op.Apply([]int{10, 0})
+	})
 }
 
 // TestSquare tests the Square operation.
@@ -353,6 +362,15 @@ func TestModulo(t *testing.T) {
 			}
 		}
 	})
+
+	t.Run("apply panics on modulo by zero", func(t *testing.T) {
+		defer func() {
+			if r := recover(); r == nil {
+				t.Error("Expected panic for modulo by zero")
+			}
+		}()
+		op.Apply([]int{10, 0})
+	})
 }
 
 // TestPower tests the Power operation.
@@ -390,6 +408,41 @@ func TestPower(t *testing.T) {
 			}
 		}
 	})
+
+	t.Run("generate respects max result limit", func(t *testing.T) {
+		// Run many iterations to ensure overflow protection works
+		for i := 0; i < 100; i++ {
+			for _, diff := range game.AllDifficulties() {
+				q := op.Generate(diff)
+				if q.Answer > 1000000 {
+					t.Errorf("Generate(%v): answer %d exceeds max limit of 1000000", diff, q.Answer)
+				}
+			}
+		}
+	})
+}
+
+// TestWouldOverflow tests the overflow detection helper.
+func TestWouldOverflow(t *testing.T) {
+	tests := []struct {
+		base, exp, max int
+		expect         bool
+	}{
+		{2, 10, 1000000, false},  // 1024 < 1000000
+		{10, 6, 1000000, false},  // 1000000 == 1000000
+		{10, 7, 1000000, true},   // 10000000 > 1000000
+		{100, 4, 1000000, true},  // 100000000 > 1000000
+		{2, 20, 1000000, true},   // 1048576 > 1000000
+		{1, 100, 1000000, false}, // 1 < 1000000
+		{5, 8, 1000000, false},   // 390625 < 1000000
+		{5, 9, 1000000, true},    // 1953125 > 1000000
+	}
+
+	for _, tt := range tests {
+		if got := wouldOverflow(tt.base, tt.exp, tt.max); got != tt.expect {
+			t.Errorf("wouldOverflow(%d, %d, %d) = %v, want %v", tt.base, tt.exp, tt.max, got, tt.expect)
+		}
+	}
 }
 
 // TestPercentage tests the Percentage operation.

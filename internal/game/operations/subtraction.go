@@ -2,7 +2,6 @@ package operations
 
 import (
 	"fmt"
-	"math"
 
 	"github.com/gurselcakar/arithmego/internal/game"
 )
@@ -14,9 +13,9 @@ func init() {
 // Subtraction implements the subtraction operation.
 type Subtraction struct{}
 
-func (s *Subtraction) Name() string           { return "Subtraction" }
-func (s *Subtraction) Symbol() string         { return "−" }
-func (s *Subtraction) Arity() game.Arity      { return game.Binary }
+func (s *Subtraction) Name() string            { return "Subtraction" }
+func (s *Subtraction) Symbol() string          { return "−" }
+func (s *Subtraction) Arity() game.Arity       { return game.Binary }
 func (s *Subtraction) Category() game.Category { return game.CategoryBasic }
 
 func (s *Subtraction) Apply(operands []int) int {
@@ -71,64 +70,57 @@ func (s *Subtraction) ScoreDifficulty(operands []int, answer int) float64 {
 }
 
 func (s *Subtraction) Generate(diff game.Difficulty) game.Question {
-	minScore, maxScore := diff.ScoreRange()
+	return generateWithFallback(s, diff, s.makeCandidate, s.makeCandidateRelaxed)
+}
 
-	// bestQuestion tracks the closest match if no exact match is found.
-	// Since bestDistance starts at MaxFloat64 and distanceFromRange always returns
-	// a finite value, the first iteration is guaranteed to populate bestQuestion.
-	var bestQuestion game.Question
-	bestDistance := math.MaxFloat64
-
-	for attempts := 0; attempts < 100; attempts++ {
-		// Generate candidates based on difficulty tier
-		var op1, op2 int
-		switch diff {
-		case game.Beginner:
-			op1 = randomInRange(2, 9)
-			op2 = randomInRange(1, op1) // Ensure positive result for beginners
-		case game.Easy:
-			op1 = randomInRange(20, 99)
-			op2 = randomInRange(10, op1)
-		case game.Medium:
-			op1 = randomInRange(50, 300)
-			op2 = randomInRange(20, op1)
-		case game.Hard:
-			op1 = randomInRange(100, 999)
-			op2 = randomInRange(50, op1)
-		case game.Expert:
-			op1 = randomInRange(500, 9999)
-			op2 = randomInRange(200, op1)
-		default:
-			op1 = randomInRange(2, 9)
-			op2 = randomInRange(1, op1)
-		}
-
-		operands := []int{op1, op2}
-		answer := s.Apply(operands)
-		score := s.ScoreDifficulty(operands, answer)
-
-		// Check if within range
-		if score >= minScore && score <= maxScore {
-			return game.Question{
-				Operands:  operands,
-				Operation: s,
-				Answer:    answer,
-				Display:   s.Format(operands),
-			}
-		}
-
-		// Track closest match
-		dist := distanceFromRange(score, minScore, maxScore)
-		if dist < bestDistance {
-			bestDistance = dist
-			bestQuestion = game.Question{
-				Operands:  operands,
-				Operation: s,
-				Answer:    answer,
-				Display:   s.Format(operands),
-			}
-		}
+// makeCandidate generates a candidate with standard operand ranges.
+func (s *Subtraction) makeCandidate(diff game.Difficulty) (Candidate, bool) {
+	var op1, op2 int
+	switch diff {
+	case game.Beginner:
+		op1 = randomInRange(2, 9)
+		op2 = randomInRange(1, op1) // Ensure positive result for beginners
+	case game.Easy:
+		op1 = randomInRange(20, 99)
+		op2 = randomInRange(10, op1)
+	case game.Medium:
+		op1 = randomInRange(50, 300)
+		op2 = randomInRange(20, op1)
+	case game.Hard:
+		op1 = randomInRange(100, 999)
+		op2 = randomInRange(50, op1)
+	case game.Expert:
+		op1 = randomInRange(500, 9999)
+		op2 = randomInRange(200, op1)
+	default:
+		op1 = randomInRange(2, 9)
+		op2 = randomInRange(1, op1)
 	}
 
-	return bestQuestion
+	operands := []int{op1, op2}
+	return Candidate{Operands: operands, Answer: s.Apply(operands)}, true
+}
+
+// makeCandidateRelaxed generates a candidate with expanded operand ranges.
+func (s *Subtraction) makeCandidateRelaxed(diff game.Difficulty) (Candidate, bool) {
+	var min1, max1 int
+	switch diff {
+	case game.Beginner:
+		min1, max1 = 2, 20
+	case game.Easy:
+		min1, max1 = 10, 150
+	case game.Medium:
+		min1, max1 = 30, 500
+	case game.Hard:
+		min1, max1 = 50, 1500
+	case game.Expert:
+		min1, max1 = 200, 9999
+	default:
+		min1, max1 = 2, 20
+	}
+
+	op1 := randomInRange(min1, max1)
+	op2 := randomInRange(1, op1)
+	operands := []int{op1, op2}
+	return Candidate{Operands: operands, Answer: s.Apply(operands)}, true
 }

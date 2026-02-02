@@ -2,7 +2,6 @@ package operations
 
 import (
 	"fmt"
-	"math"
 
 	"github.com/gurselcakar/arithmego/internal/game"
 )
@@ -14,9 +13,9 @@ func init() {
 // Addition implements the addition operation.
 type Addition struct{}
 
-func (a *Addition) Name() string           { return "Addition" }
-func (a *Addition) Symbol() string         { return "+" }
-func (a *Addition) Arity() game.Arity      { return game.Binary }
+func (a *Addition) Name() string            { return "Addition" }
+func (a *Addition) Symbol() string          { return "+" }
+func (a *Addition) Arity() game.Arity       { return game.Binary }
 func (a *Addition) Category() game.Category { return game.CategoryBasic }
 
 func (a *Addition) Apply(operands []int) int {
@@ -66,64 +65,63 @@ func (a *Addition) ScoreDifficulty(operands []int, answer int) float64 {
 }
 
 func (a *Addition) Generate(diff game.Difficulty) game.Question {
-	minScore, maxScore := diff.ScoreRange()
+	return generateWithFallback(a, diff, a.makeCandidate, a.makeCandidateRelaxed)
+}
 
-	// bestQuestion tracks the closest match if no exact match is found.
-	// Since bestDistance starts at MaxFloat64 and distanceFromRange always returns
-	// a finite value, the first iteration is guaranteed to populate bestQuestion.
-	var bestQuestion game.Question
-	bestDistance := math.MaxFloat64
-
-	for attempts := 0; attempts < 100; attempts++ {
-		// Generate candidates based on difficulty tier
-		var op1, op2 int
-		switch diff {
-		case game.Beginner:
-			op1 = randomInRange(1, 9)
-			op2 = randomInRange(1, 9)
-		case game.Easy:
-			op1 = randomInRange(10, 50)
-			op2 = randomInRange(10, 50)
-		case game.Medium:
-			op1 = randomInRange(20, 200)
-			op2 = randomInRange(20, 200)
-		case game.Hard:
-			op1 = randomInRange(100, 500)
-			op2 = randomInRange(100, 500)
-		case game.Expert:
-			op1 = randomInRange(200, 999)
-			op2 = randomInRange(200, 999)
-		default:
-			op1 = randomInRange(1, 9)
-			op2 = randomInRange(1, 9)
-		}
-
-		operands := []int{op1, op2}
-		answer := a.Apply(operands)
-		score := a.ScoreDifficulty(operands, answer)
-
-		// Check if within range
-		if score >= minScore && score <= maxScore {
-			return game.Question{
-				Operands:  operands,
-				Operation: a,
-				Answer:    answer,
-				Display:   a.Format(operands),
-			}
-		}
-
-		// Track closest match
-		dist := distanceFromRange(score, minScore, maxScore)
-		if dist < bestDistance {
-			bestDistance = dist
-			bestQuestion = game.Question{
-				Operands:  operands,
-				Operation: a,
-				Answer:    answer,
-				Display:   a.Format(operands),
-			}
-		}
+// makeCandidate generates a candidate with standard operand ranges.
+func (a *Addition) makeCandidate(diff game.Difficulty) (Candidate, bool) {
+	var op1, op2 int
+	switch diff {
+	case game.Beginner:
+		op1 = randomInRange(1, 9)
+		op2 = randomInRange(1, 9)
+	case game.Easy:
+		op1 = randomInRange(10, 50)
+		op2 = randomInRange(10, 50)
+	case game.Medium:
+		op1 = randomInRange(20, 200)
+		op2 = randomInRange(20, 200)
+	case game.Hard:
+		op1 = randomInRange(100, 500)
+		op2 = randomInRange(100, 500)
+	case game.Expert:
+		op1 = randomInRange(200, 999)
+		op2 = randomInRange(200, 999)
+	default:
+		op1 = randomInRange(1, 9)
+		op2 = randomInRange(1, 9)
 	}
 
-	return bestQuestion
+	operands := []int{op1, op2}
+	return Candidate{Operands: operands, Answer: a.Apply(operands)}, true
+}
+
+// makeCandidateRelaxed generates a candidate with expanded operand ranges.
+func (a *Addition) makeCandidateRelaxed(diff game.Difficulty) (Candidate, bool) {
+	var min1, max1, min2, max2 int
+	switch diff {
+	case game.Beginner:
+		min1, max1 = 1, 20
+		min2, max2 = 1, 20
+	case game.Easy:
+		min1, max1 = 5, 100
+		min2, max2 = 5, 100
+	case game.Medium:
+		min1, max1 = 10, 300
+		min2, max2 = 10, 300
+	case game.Hard:
+		min1, max1 = 50, 700
+		min2, max2 = 50, 700
+	case game.Expert:
+		min1, max1 = 100, 999
+		min2, max2 = 100, 999
+	default:
+		min1, max1 = 1, 20
+		min2, max2 = 1, 20
+	}
+
+	op1 := randomInRange(min1, max1)
+	op2 := randomInRange(min2, max2)
+	operands := []int{op1, op2}
+	return Candidate{Operands: operands, Answer: a.Apply(operands)}, true
 }
