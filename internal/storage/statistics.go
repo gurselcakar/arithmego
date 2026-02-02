@@ -172,86 +172,10 @@ func AddSession(record SessionRecord) error {
 	return Save(stats)
 }
 
-// Aggregates contains computed statistics across all sessions.
-type Aggregates struct {
-	TotalSessions     int
-	TotalQuestions    int
-	TotalCorrect      int
-	OverallAccuracy   float64
-	BestStreakEver    int
-	AvgResponseTimeMs int64
-
-	// Per-operation stats: map[operationName]accuracy
-	ByOperation map[string]OperationStats
-
-	// Per-mode stats: map[modeName]sessionCount
-	ByMode map[string]int
-}
-
 // OperationStats holds statistics for a single operation.
+// Used by the analytics package for aggregate computations.
 type OperationStats struct {
 	Correct  int
 	Total    int
 	Accuracy float64
-}
-
-// ComputeAggregates calculates aggregate statistics from all sessions.
-func ComputeAggregates(stats *Statistics) Aggregates {
-	agg := Aggregates{
-		ByOperation: make(map[string]OperationStats),
-		ByMode:      make(map[string]int),
-	}
-
-	if len(stats.Sessions) == 0 {
-		return agg
-	}
-
-	var totalResponseTime int64
-	var questionsWithTime int
-
-	for _, session := range stats.Sessions {
-		agg.TotalSessions++
-		agg.TotalQuestions += session.QuestionsAttempted
-		agg.TotalCorrect += session.QuestionsCorrect
-
-		if session.BestStreak > agg.BestStreakEver {
-			agg.BestStreakEver = session.BestStreak
-		}
-
-		agg.ByMode[session.Mode]++
-
-		for _, q := range session.Questions {
-			opStats := agg.ByOperation[q.Operation]
-			if !q.Skipped {
-				opStats.Total++
-				if q.Correct {
-					opStats.Correct++
-				}
-			}
-			agg.ByOperation[q.Operation] = opStats
-
-			if q.ResponseTimeMs > 0 {
-				totalResponseTime += q.ResponseTimeMs
-				questionsWithTime++
-			}
-		}
-	}
-
-	if agg.TotalQuestions > 0 {
-		agg.OverallAccuracy = float64(agg.TotalCorrect) / float64(agg.TotalQuestions) * 100
-	}
-
-	if questionsWithTime > 0 {
-		agg.AvgResponseTimeMs = totalResponseTime / int64(questionsWithTime)
-	}
-
-	// Compute per-operation accuracy
-	for op, opStats := range agg.ByOperation {
-		if opStats.Total > 0 {
-			opStats.Accuracy = float64(opStats.Correct) / float64(opStats.Total) * 100
-		}
-		agg.ByOperation[op] = opStats
-	}
-
-	return agg
 }
