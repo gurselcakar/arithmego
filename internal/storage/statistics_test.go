@@ -141,6 +141,36 @@ func TestLoad_CorruptedJSON(t *testing.T) {
 	}
 }
 
+func TestLoad_NullSessions(t *testing.T) {
+	// Use a temporary directory for test isolation
+	tempDir := t.TempDir()
+	SetConfigDirForTesting(tempDir)
+	defer SetConfigDirForTesting("")
+
+	path, err := StatisticsPath()
+	if err != nil {
+		t.Fatalf("StatisticsPath() error = %v", err)
+	}
+
+	// Write JSON with null sessions
+	nullData := []byte(`{"sessions": null}`)
+	if err := os.WriteFile(path, nullData, 0600); err != nil {
+		t.Fatalf("Failed to write null sessions data: %v", err)
+	}
+
+	// Load should return empty slice, not nil
+	stats, err := Load()
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	if stats.Sessions == nil {
+		t.Error("Load() should return empty slice for null sessions, not nil")
+	}
+	if len(stats.Sessions) != 0 {
+		t.Errorf("Load() should return empty slice, got %d sessions", len(stats.Sessions))
+	}
+}
+
 func TestConfigDir(t *testing.T) {
 	dir, err := ConfigDir()
 	if err != nil {

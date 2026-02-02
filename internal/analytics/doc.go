@@ -17,8 +17,8 @@
 //	fmt.Printf("Total sessions: %d\n", agg.TotalSessions)
 //	fmt.Printf("Overall accuracy: %.1f%%\n", agg.OverallAccuracy)
 //
-// Aggregates include basic counts, per-operation breakdowns, personal bests,
-// and response time statistics.
+// Aggregates include basic counts, per-operation breakdowns ([OperationStats]),
+// personal bests, and response time statistics.
 //
 // # Filtering
 //

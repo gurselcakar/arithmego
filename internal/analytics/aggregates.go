@@ -7,6 +7,13 @@ import (
 	"github.com/gurselcakar/arithmego/internal/storage"
 )
 
+// OperationStats holds basic statistics for a single operation.
+type OperationStats struct {
+	Correct  int
+	Total    int
+	Accuracy float64
+}
+
 // ExtendedAggregates contains comprehensive computed statistics.
 type ExtendedAggregates struct {
 	// Basic counts
@@ -18,7 +25,7 @@ type ExtendedAggregates struct {
 	AvgResponseTimeMs int64
 
 	// Per-operation stats
-	ByOperation map[string]storage.OperationStats
+	ByOperation map[string]OperationStats
 
 	// Per-mode stats: map[modeName]sessionCount
 	ByMode map[string]int
@@ -87,7 +94,7 @@ func ComputeExtendedAggregates(stats *storage.Statistics) ExtendedAggregates {
 // ComputeFilteredAggregates computes aggregates for sessions/questions matching the filter.
 func ComputeFilteredAggregates(stats *storage.Statistics, filter AggregateFilter) ExtendedAggregates {
 	agg := ExtendedAggregates{
-		ByOperation:         make(map[string]storage.OperationStats),
+		ByOperation:         make(map[string]OperationStats),
 		ByMode:              make(map[string]int),
 		ByOperationExtended: make(map[string]ExtendedOperationStats),
 	}

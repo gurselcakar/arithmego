@@ -171,11 +171,3 @@ func AddSession(record SessionRecord) error {
 	stats.Sessions = append(stats.Sessions, record)
 	return Save(stats)
 }
-
-// OperationStats holds statistics for a single operation.
-// Used by the analytics package for aggregate computations.
-type OperationStats struct {
-	Correct  int
-	Total    int
-	Accuracy float64
-}
