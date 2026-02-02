@@ -2,7 +2,6 @@ package operations
 
 import (
 	"fmt"
-	"math"
 
 	"github.com/gurselcakar/arithmego/internal/game"
 )
@@ -14,9 +13,9 @@ func init() {
 // Factorial implements the factorial operation (n!).
 type Factorial struct{}
 
-func (f *Factorial) Name() string           { return "Factorial" }
-func (f *Factorial) Symbol() string         { return "!" }
-func (f *Factorial) Arity() game.Arity      { return game.Unary }
+func (f *Factorial) Name() string            { return "Factorial" }
+func (f *Factorial) Symbol() string          { return "!" }
+func (f *Factorial) Arity() game.Arity       { return game.Unary }
 func (f *Factorial) Category() game.Category { return game.CategoryAdvanced }
 
 func (f *Factorial) Apply(operands []int) int {
@@ -27,15 +26,20 @@ func (f *Factorial) Format(operands []int) string {
 	return fmt.Sprintf("%d!", operands[0])
 }
 
+// ScoreDifficulty computes a difficulty score based on cognitive load factors.
+//
+// Scoring weights rationale:
+//   - Input value n (+0.5 to +9.5): Factorials grow extremely fast, making larger values
+//     impractical for mental math. Common breakpoints:
+//     • n ≤ 3: Trivial/memorized (1!=1, 2!=2, 3!=6)
+//     • n = 4,5: Commonly known (4!=24, 5!=120)
+//     • n = 6,7: Require computation (6!=720, 7!=5040)
+//     • n ≥ 8: Challenging multi-step multiplication
+//
+// Weights are initial estimates subject to tuning based on playtesting.
 func (f *Factorial) ScoreDifficulty(operands []int, answer int) float64 {
 	n := operands[0]
 	score := 1.0
-
-	// Factorial difficulty by n
-	// 1! = 1, 2! = 2, 3! = 6 - trivial/memorized
-	// 4! = 24, 5! = 120 - commonly known
-	// 6! = 720, 7! = 5040 - need computation
-	// 8! and above - challenging
 
 	switch {
 	case n <= 3:
@@ -60,53 +64,51 @@ func (f *Factorial) ScoreDifficulty(operands []int, answer int) float64 {
 }
 
 func (f *Factorial) Generate(diff game.Difficulty) game.Question {
-	minScore, maxScore := diff.ScoreRange()
+	return generateWithFallback(f, diff, f.makeCandidate, f.makeCandidateRelaxed)
+}
 
-	var bestQuestion game.Question
-	bestDistance := math.MaxFloat64
-
-	// Factorials are limited - max 10! = 3,628,800
-	for attempts := 0; attempts < 100; attempts++ {
-		var n int
-		switch diff {
-		case game.Beginner:
-			n = randomInRange(1, 4)
-		case game.Easy:
-			n = randomInRange(3, 5)
-		case game.Medium:
-			n = randomInRange(4, 6)
-		case game.Hard:
-			n = randomInRange(5, 8)
-		case game.Expert:
-			n = randomInRange(7, 10)
-		default:
-			n = randomInRange(1, 4)
-		}
-
-		operands := []int{n}
-		answer := f.Apply(operands)
-		score := f.ScoreDifficulty(operands, answer)
-
-		if score >= minScore && score <= maxScore {
-			return game.Question{
-				Operands:  operands,
-				Operation: f,
-				Answer:    answer,
-				Display:   f.Format(operands),
-			}
-		}
-
-		dist := distanceFromRange(score, minScore, maxScore)
-		if dist < bestDistance {
-			bestDistance = dist
-			bestQuestion = game.Question{
-				Operands:  operands,
-				Operation: f,
-				Answer:    answer,
-				Display:   f.Format(operands),
-			}
-		}
+// makeCandidate generates a candidate with standard operand ranges.
+// Factorials are limited - max 10! = 3,628,800.
+func (f *Factorial) makeCandidate(diff game.Difficulty) (Candidate, bool) {
+	var n int
+	switch diff {
+	case game.Beginner:
+		n = randomInRange(1, 4)
+	case game.Easy:
+		n = randomInRange(3, 5)
+	case game.Medium:
+		n = randomInRange(4, 6)
+	case game.Hard:
+		n = randomInRange(5, 8)
+	case game.Expert:
+		n = randomInRange(7, 10)
+	default:
+		n = randomInRange(1, 4)
 	}
 
-	return bestQuestion
+	operands := []int{n}
+	return Candidate{Operands: operands, Answer: f.Apply(operands)}, true
+}
+
+// makeCandidateRelaxed generates a candidate with expanded operand ranges.
+func (f *Factorial) makeCandidateRelaxed(diff game.Difficulty) (Candidate, bool) {
+	var min, max int
+	switch diff {
+	case game.Beginner:
+		min, max = 1, 5
+	case game.Easy:
+		min, max = 2, 6
+	case game.Medium:
+		min, max = 3, 7
+	case game.Hard:
+		min, max = 4, 9
+	case game.Expert:
+		min, max = 5, 10
+	default:
+		min, max = 1, 5
+	}
+
+	n := randomInRange(min, max)
+	operands := []int{n}
+	return Candidate{Operands: operands, Answer: f.Apply(operands)}, true
 }

@@ -1,7 +1,10 @@
 package operations
 
 import (
+	"math"
 	"math/rand"
+
+	"github.com/gurselcakar/arithmego/internal/game"
 )
 
 // countDigits returns the number of digits in n.
@@ -141,6 +144,12 @@ func clampScore(score float64) float64 {
 	return score
 }
 
+// maxAcceptableDistance is the maximum allowed deviation from the target
+// difficulty range when falling back to the closest match. If the best
+// question found exceeds this threshold, a second pass with relaxed
+// constraints should be attempted.
+const maxAcceptableDistance = 1.5
+
 // distanceFromRange returns how far a score is from a range.
 // Returns 0 if within range.
 func distanceFromRange(score, min, max float64) float64 {
@@ -151,6 +160,12 @@ func distanceFromRange(score, min, max float64) float64 {
 		return min - score
 	}
 	return score - max
+}
+
+// isAcceptableFallback returns true if the fallback question's distance
+// from the target range is within acceptable bounds.
+func isAcceptableFallback(distance float64) bool {
+	return distance <= maxAcceptableDistance
 }
 
 // randomInRange returns a random integer in [min, max].
@@ -177,10 +192,11 @@ func isTimesTableFact(divisor, quotient int) bool {
 	return divisor <= 12 && quotient <= 12
 }
 
-// intPow computes base^exp for integers.
+// intPow computes base^exp for non-negative integer exponents.
+// Panics if exp < 0 since negative exponents produce non-integer results.
 func intPow(base, exp int) int {
 	if exp < 0 {
-		return 0
+		panic("intPow: negative exponent")
 	}
 	result := 1
 	for exp > 0 {
@@ -190,10 +206,11 @@ func intPow(base, exp int) int {
 	return result
 }
 
-// factorial computes n!.
+// factorial computes n! for non-negative integers.
+// Panics if n < 0 since factorial is undefined for negative numbers.
 func factorial(n int) int {
 	if n < 0 {
-		return 0
+		panic("factorial: negative input")
 	}
 	if n <= 1 {
 		return 1
@@ -203,5 +220,105 @@ func factorial(n int) int {
 		result *= i
 	}
 	return result
+}
+
+// Candidate represents a generated question candidate before validation.
+type Candidate struct {
+	Operands []int
+	Answer   int
+}
+
+// CandidateFunc generates a candidate for a given difficulty.
+// Returns the candidate and whether it's valid. Some operations (like percentage)
+// may generate invalid candidates that should be skipped.
+type CandidateFunc func(diff game.Difficulty) (Candidate, bool)
+
+// generateWithFallback generates a question using the provided candidate generator.
+// It tries up to 100 candidates, tracking the closest match. If no exact match is
+// found and the best candidate exceeds maxAcceptableDistance, it runs a second pass
+// with the relaxed generator (if provided) for 50 more attempts.
+//
+// Parameters:
+//   - op: The operation (used for scoring and formatting)
+//   - diff: Target difficulty level
+//   - primary: Main candidate generator for this difficulty
+//   - relaxed: Optional relaxed generator with wider constraints (can be nil)
+func generateWithFallback(
+	op game.Operation,
+	diff game.Difficulty,
+	primary CandidateFunc,
+	relaxed CandidateFunc,
+) game.Question {
+	minScore, maxScore := diff.ScoreRange()
+
+	var bestQuestion game.Question
+	bestDistance := math.MaxFloat64
+
+	// Primary pass: 100 attempts
+	for attempts := 0; attempts < 100; attempts++ {
+		candidate, valid := primary(diff)
+		if !valid {
+			continue
+		}
+
+		score := op.ScoreDifficulty(candidate.Operands, candidate.Answer)
+
+		if score >= minScore && score <= maxScore {
+			return game.Question{
+				Operands:  candidate.Operands,
+				Operation: op,
+				Answer:    candidate.Answer,
+				Display:   op.Format(candidate.Operands),
+			}
+		}
+
+		dist := distanceFromRange(score, minScore, maxScore)
+		if dist < bestDistance {
+			bestDistance = dist
+			bestQuestion = game.Question{
+				Operands:  candidate.Operands,
+				Operation: op,
+				Answer:    candidate.Answer,
+				Display:   op.Format(candidate.Operands),
+			}
+		}
+	}
+
+	// If fallback is acceptable or no relaxed generator, return best match
+	if isAcceptableFallback(bestDistance) || relaxed == nil {
+		return bestQuestion
+	}
+
+	// Relaxed pass: 50 more attempts with wider constraints
+	for attempts := 0; attempts < 50; attempts++ {
+		candidate, valid := relaxed(diff)
+		if !valid {
+			continue
+		}
+
+		score := op.ScoreDifficulty(candidate.Operands, candidate.Answer)
+
+		if score >= minScore && score <= maxScore {
+			return game.Question{
+				Operands:  candidate.Operands,
+				Operation: op,
+				Answer:    candidate.Answer,
+				Display:   op.Format(candidate.Operands),
+			}
+		}
+
+		dist := distanceFromRange(score, minScore, maxScore)
+		if dist < bestDistance {
+			bestDistance = dist
+			bestQuestion = game.Question{
+				Operands:  candidate.Operands,
+				Operation: op,
+				Answer:    candidate.Answer,
+				Display:   op.Format(candidate.Operands),
+			}
+		}
+	}
+
+	return bestQuestion
 }
 

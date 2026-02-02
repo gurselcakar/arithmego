@@ -2,7 +2,6 @@ package operations
 
 import (
 	"fmt"
-	"math"
 
 	"github.com/gurselcakar/arithmego/internal/game"
 )
@@ -14,9 +13,9 @@ func init() {
 // Power implements the power operation (a^b).
 type Power struct{}
 
-func (p *Power) Name() string           { return "Power" }
-func (p *Power) Symbol() string         { return "^" }
-func (p *Power) Arity() game.Arity      { return game.Binary }
+func (p *Power) Name() string            { return "Power" }
+func (p *Power) Symbol() string          { return "^" }
+func (p *Power) Arity() game.Arity       { return game.Binary }
 func (p *Power) Category() game.Category { return game.CategoryAdvanced }
 
 func (p *Power) Apply(operands []int) int {
@@ -27,6 +26,18 @@ func (p *Power) Format(operands []int) string {
 	return fmt.Sprintf("%d^%d", operands[0], operands[1])
 }
 
+// ScoreDifficulty computes a difficulty score based on cognitive load factors.
+//
+// Scoring weights rationale:
+//   - Exponent value: Determines the number of multiplications needed.
+//     • exp=2: Squares, often memorized up to 12². Larger bases need computation.
+//     • exp=3: Cubes, commonly known up to 5³. Requires chaining two multiplications.
+//     • exp=4+: Requires multiple chained multiplications with growing intermediate values.
+//   - Easy bases (-0.5/-1.0): Base 2 has familiar powers (2,4,8,16,32...). Base 10 is trivial
+//     (just append zeros).
+//   - Base of 1: Trivial case, always equals 1 regardless of exponent.
+//
+// Weights are initial estimates subject to tuning based on playtesting.
 func (p *Power) ScoreDifficulty(operands []int, answer int) float64 {
 	base, exp := operands[0], operands[1]
 	score := 1.0
@@ -78,63 +89,95 @@ func (p *Power) ScoreDifficulty(operands []int, answer int) float64 {
 }
 
 func (p *Power) Generate(diff game.Difficulty) game.Question {
-	minScore, maxScore := diff.ScoreRange()
+	return generateWithFallback(p, diff, p.makeCandidate, p.makeCandidateRelaxed)
+}
 
-	var bestQuestion game.Question
-	bestDistance := math.MaxFloat64
+// maxPowerResult is the maximum allowed result for power operations.
+// This prevents integer overflow and keeps answers reasonable for mental math.
+const maxPowerResult = 1000000
 
-	for attempts := 0; attempts < 100; attempts++ {
-		var base, exp int
-		switch diff {
-		case game.Beginner:
-			base = randomInRange(2, 10)
-			exp = 2
-		case game.Easy:
-			base = randomInRange(2, 12)
-			exp = randomInRange(2, 3)
-		case game.Medium:
-			base = randomInRange(2, 10)
-			exp = randomInRange(2, 4)
-		case game.Hard:
-			base = randomInRange(2, 8)
-			exp = randomInRange(3, 5)
-		case game.Expert:
-			base = randomInRange(2, 6)
-			exp = randomInRange(4, 6)
-		default:
-			base = randomInRange(2, 10)
-			exp = 2
-		}
-
-		// Prevent overflow - limit result to reasonable size
-		result := intPow(base, exp)
-		if result > 1000000 {
-			continue
-		}
-
-		operands := []int{base, exp}
-		score := p.ScoreDifficulty(operands, result)
-
-		if score >= minScore && score <= maxScore {
-			return game.Question{
-				Operands:  operands,
-				Operation: p,
-				Answer:    result,
-				Display:   p.Format(operands),
-			}
-		}
-
-		dist := distanceFromRange(score, minScore, maxScore)
-		if dist < bestDistance {
-			bestDistance = dist
-			bestQuestion = game.Question{
-				Operands:  operands,
-				Operation: p,
-				Answer:    result,
-				Display:   p.Format(operands),
-			}
-		}
+// makeCandidate generates a candidate with standard operand ranges.
+// Returns invalid if the result would exceed maxPowerResult.
+func (p *Power) makeCandidate(diff game.Difficulty) (Candidate, bool) {
+	var base, exp int
+	switch diff {
+	case game.Beginner:
+		base = randomInRange(2, 10)
+		exp = 2
+	case game.Easy:
+		base = randomInRange(2, 12)
+		exp = randomInRange(2, 3)
+	case game.Medium:
+		base = randomInRange(2, 10)
+		exp = randomInRange(2, 4)
+	case game.Hard:
+		base = randomInRange(2, 8)
+		exp = randomInRange(3, 5)
+	case game.Expert:
+		base = randomInRange(2, 6)
+		exp = randomInRange(4, 6)
+	default:
+		base = randomInRange(2, 10)
+		exp = 2
 	}
 
-	return bestQuestion
+	// Check for overflow before computing
+	if wouldOverflow(base, exp, maxPowerResult) {
+		return Candidate{}, false
+	}
+
+	result := intPow(base, exp)
+	return Candidate{Operands: []int{base, exp}, Answer: result}, true
+}
+
+// makeCandidateRelaxed generates a candidate with expanded operand ranges.
+func (p *Power) makeCandidateRelaxed(diff game.Difficulty) (Candidate, bool) {
+	var minBase, maxBase, minExp, maxExp int
+	switch diff {
+	case game.Beginner:
+		minBase, maxBase = 2, 12
+		minExp, maxExp = 2, 2
+	case game.Easy:
+		minBase, maxBase = 2, 15
+		minExp, maxExp = 2, 3
+	case game.Medium:
+		minBase, maxBase = 2, 12
+		minExp, maxExp = 2, 4
+	case game.Hard:
+		minBase, maxBase = 2, 10
+		minExp, maxExp = 2, 5
+	case game.Expert:
+		minBase, maxBase = 2, 8
+		minExp, maxExp = 3, 7
+	default:
+		minBase, maxBase = 2, 12
+		minExp, maxExp = 2, 2
+	}
+
+	base := randomInRange(minBase, maxBase)
+	exp := randomInRange(minExp, maxExp)
+
+	// Check for overflow before computing
+	if wouldOverflow(base, exp, maxPowerResult) {
+		return Candidate{}, false
+	}
+
+	result := intPow(base, exp)
+	return Candidate{Operands: []int{base, exp}, Answer: result}, true
+}
+
+// wouldOverflow returns true if base^exp would exceed maxResult.
+// Uses iterative multiplication with early exit to avoid actual overflow.
+func wouldOverflow(base, exp, maxResult int) bool {
+	if base <= 1 {
+		return false
+	}
+	result := 1
+	for i := 0; i < exp; i++ {
+		result *= base
+		if result > maxResult {
+			return true
+		}
+	}
+	return false
 }

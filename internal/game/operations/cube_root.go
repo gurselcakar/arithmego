@@ -14,9 +14,9 @@ func init() {
 // CubeRoot implements the cube root operation (∛n).
 type CubeRoot struct{}
 
-func (c *CubeRoot) Name() string           { return "Cube Root" }
-func (c *CubeRoot) Symbol() string         { return "∛" }
-func (c *CubeRoot) Arity() game.Arity      { return game.Unary }
+func (c *CubeRoot) Name() string            { return "Cube Root" }
+func (c *CubeRoot) Symbol() string          { return "∛" }
+func (c *CubeRoot) Arity() game.Arity       { return game.Unary }
 func (c *CubeRoot) Category() game.Category { return game.CategoryPower }
 
 func (c *CubeRoot) Apply(operands []int) int {
@@ -27,6 +27,14 @@ func (c *CubeRoot) Format(operands []int) string {
 	return fmt.Sprintf("∛%d", operands[0])
 }
 
+// ScoreDifficulty computes a difficulty score based on cognitive load factors.
+//
+// Scoring weights rationale:
+//   - Answer magnitude (+1.0 to +5.5): Smaller cube roots (∛8=2, ∛27=3) are commonly known.
+//     Larger roots require recognizing less familiar perfect cubes or estimation.
+//   - Common cubes (-0.5): Roots like ∛8, ∛27, ∛64, ∛125, ∛1000 are frequently memorized.
+//
+// Weights are initial estimates subject to tuning based on playtesting.
 func (c *CubeRoot) ScoreDifficulty(operands []int, answer int) float64 {
 	score := 1.0
 
@@ -51,53 +59,50 @@ func (c *CubeRoot) ScoreDifficulty(operands []int, answer int) float64 {
 }
 
 func (c *CubeRoot) Generate(diff game.Difficulty) game.Question {
-	minScore, maxScore := diff.ScoreRange()
+	return generateWithFallback(c, diff, c.makeCandidate, c.makeCandidateRelaxed)
+}
 
-	var bestQuestion game.Question
-	bestDistance := math.MaxFloat64
-
-	for attempts := 0; attempts < 100; attempts++ {
-		// Generate perfect cube by picking the result first
-		var result int
-		switch diff {
-		case game.Beginner:
-			result = randomInRange(2, 5)
-		case game.Easy:
-			result = randomInRange(3, 7)
-		case game.Medium:
-			result = randomInRange(5, 10)
-		case game.Hard:
-			result = randomInRange(7, 15)
-		case game.Expert:
-			result = randomInRange(10, 20)
-		default:
-			result = randomInRange(2, 5)
-		}
-
-		operand := result * result * result
-		operands := []int{operand}
-		score := c.ScoreDifficulty(operands, result)
-
-		if score >= minScore && score <= maxScore {
-			return game.Question{
-				Operands:  operands,
-				Operation: c,
-				Answer:    result,
-				Display:   c.Format(operands),
-			}
-		}
-
-		dist := distanceFromRange(score, minScore, maxScore)
-		if dist < bestDistance {
-			bestDistance = dist
-			bestQuestion = game.Question{
-				Operands:  operands,
-				Operation: c,
-				Answer:    result,
-				Display:   c.Format(operands),
-			}
-		}
+// makeCandidate generates a perfect cube by picking the result first.
+func (c *CubeRoot) makeCandidate(diff game.Difficulty) (Candidate, bool) {
+	var result int
+	switch diff {
+	case game.Beginner:
+		result = randomInRange(2, 5)
+	case game.Easy:
+		result = randomInRange(3, 7)
+	case game.Medium:
+		result = randomInRange(5, 10)
+	case game.Hard:
+		result = randomInRange(7, 15)
+	case game.Expert:
+		result = randomInRange(10, 20)
+	default:
+		result = randomInRange(2, 5)
 	}
 
-	return bestQuestion
+	operand := result * result * result
+	return Candidate{Operands: []int{operand}, Answer: result}, true
+}
+
+// makeCandidateRelaxed generates a candidate with expanded result ranges.
+func (c *CubeRoot) makeCandidateRelaxed(diff game.Difficulty) (Candidate, bool) {
+	var min, max int
+	switch diff {
+	case game.Beginner:
+		min, max = 2, 7
+	case game.Easy:
+		min, max = 2, 10
+	case game.Medium:
+		min, max = 3, 15
+	case game.Hard:
+		min, max = 5, 20
+	case game.Expert:
+		min, max = 7, 25
+	default:
+		min, max = 2, 7
+	}
+
+	result := randomInRange(min, max)
+	operand := result * result * result
+	return Candidate{Operands: []int{operand}, Answer: result}, true
 }
