@@ -61,8 +61,13 @@ func RenderOperationsContent(
 	b.WriteString(styles.Bold.Render("STATISTICS · OPERATIONS"))
 	b.WriteString("\n\n")
 
-	// Filter summary
-	b.WriteString(styles.Dim.Render("Showing: " + filterPanel.FilterSummary()))
+	// Filter status
+	filterLine := fmt.Sprintf("%s  •  %s  •  %s",
+		filterPanel.GetCategoryDisplay(),
+		filterPanel.GetDifficultyDisplay(),
+		filterPanel.GetTimePeriodDisplay(),
+	)
+	b.WriteString(styles.Dim.Render(filterLine))
 	b.WriteString("\n\n")
 
 	// Separator
@@ -102,14 +107,7 @@ func RenderOperationsContent(
 		}
 	}
 
-	mainContent := b.String()
-
-	// Layout with filter panel overlay if open
-	if filterPanel.IsOpen() {
-		mainContent = filterPanel.OverlayView(mainContent, width)
-	}
-
-	return mainContent
+	return b.String()
 }
 
 // renderOperationRow renders a single operation row.

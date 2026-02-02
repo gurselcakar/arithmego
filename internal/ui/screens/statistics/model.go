@@ -47,7 +47,6 @@ type Model struct {
 
 	// Operation detail state
 	opDetailDifficultyIdx int
-	opDetailTimePeriodIdx int
 	opHasMistakes         bool // cached to avoid querying on every render
 
 	// Operation review state (review all mistakes)
@@ -145,11 +144,6 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 // handleKeyPress routes key presses to the appropriate view handler.
 func (m Model) handleKeyPress(msg tea.KeyMsg) (Model, tea.Cmd) {
-	// If filter panel is open, handle it first
-	if m.filterPanel.IsOpen() {
-		return m.handleFilterPanelKeys(msg)
-	}
-
 	switch m.view {
 	case ViewDashboard:
 		return m.handleDashboardKeys(msg)
@@ -169,23 +163,6 @@ func (m Model) handleKeyPress(msg tea.KeyMsg) (Model, tea.Cmd) {
 		return m.handleTrendsKeys(msg)
 	}
 
-	return m, nil
-}
-
-// handleFilterPanelKeys handles keys when filter panel is open.
-func (m Model) handleFilterPanelKeys(msg tea.KeyMsg) (Model, tea.Cmd) {
-	switch msg.String() {
-	case "esc":
-		m.filterPanel.Close()
-		m.updateViewportContent()
-	case "tab", "enter":
-		m.filterPanel.Apply()
-		m.applyFilters()
-		m.updateViewportContent()
-	default:
-		m.filterPanel, _ = m.filterPanel.Update(msg)
-		m.updateViewportContent()
-	}
 	return m, nil
 }
 
@@ -225,12 +202,17 @@ func (m Model) handleOperationsKeys(msg tea.KeyMsg) (Model, tea.Cmd) {
 		m.view = ViewDashboard
 		m.updateViewportContent()
 		m.viewport.GotoTop()
-	case "d", "D":
-		m.view = ViewDashboard
+	case "c", "C":
+		m.filterPanel.CycleCategory()
+		m.applyFilters()
 		m.updateViewportContent()
-		m.viewport.GotoTop()
-	case "tab":
-		m.filterPanel.Open()
+	case "d", "D":
+		m.filterPanel.CycleDifficulty()
+		m.applyFilters()
+		m.updateViewportContent()
+	case "p", "P":
+		m.filterPanel.CycleTimePeriod()
+		m.applyFilters()
 		m.updateViewportContent()
 	case "up", "k":
 		if m.operationIndex > 0 {
@@ -247,7 +229,6 @@ func (m Model) handleOperationsKeys(msg tea.KeyMsg) (Model, tea.Cmd) {
 			m.selectedOperation = GetSelectedOperation(m.operationList, m.operationIndex)
 			m.view = ViewOperationDetail
 			m.opDetailDifficultyIdx = 0
-			m.opDetailTimePeriodIdx = 0
 			m.opHasMistakes = len(analytics.GetRecentMistakes(m.stats, m.selectedOperation, 1)) > 0
 			m.updateViewportContent()
 			m.viewport.GotoTop()
@@ -316,12 +297,17 @@ func (m Model) handleHistoryKeys(msg tea.KeyMsg) (Model, tea.Cmd) {
 		m.view = ViewDashboard
 		m.updateViewportContent()
 		m.viewport.GotoTop()
-	case "d", "D":
-		m.view = ViewDashboard
+	case "c", "C":
+		m.filterPanel.CycleCategory()
+		m.applyFilters()
 		m.updateViewportContent()
-		m.viewport.GotoTop()
-	case "tab":
-		m.filterPanel.Open()
+	case "d", "D":
+		m.filterPanel.CycleDifficulty()
+		m.applyFilters()
+		m.updateViewportContent()
+	case "p", "P":
+		m.filterPanel.CycleTimePeriod()
+		m.applyFilters()
 		m.updateViewportContent()
 	case "up", "k":
 		m.historyNav.MoveUp()
@@ -409,36 +395,23 @@ func (m Model) handleSessionLogKeys(msg tea.KeyMsg) (Model, tea.Cmd) {
 // handleTrendsKeys handles trends view keys.
 func (m Model) handleTrendsKeys(msg tea.KeyMsg) (Model, tea.Cmd) {
 	switch msg.String() {
-	case "esc", "d", "D":
+	case "esc":
 		m.view = ViewDashboard
 		m.updateViewportContent()
 		m.viewport.GotoTop()
-	case "up", "k":
-		if m.trendsState.Focus > TrendsFocusMetric {
-			m.trendsState.Focus--
-			m.updateViewportContent()
-		}
-	case "down", "j":
-		if m.trendsState.Focus < TrendsFocusPeriod {
-			m.trendsState.Focus++
-			m.updateViewportContent()
-		}
-	case "left", "h":
-		if m.trendsState.Focus == TrendsFocusMetric {
-			m.trendsState.PrevMetric()
-		} else {
-			m.trendsState.PrevPeriod()
-		}
+	case "m", "M":
+		m.trendsState.NextMetric()
 		m.updateTrendsData()
 		m.updateViewportContent()
-	case "right", "l":
-		if m.trendsState.Focus == TrendsFocusMetric {
-			m.trendsState.NextMetric()
-		} else {
-			m.trendsState.NextPeriod()
-		}
+	case "p", "P":
+		m.trendsState.NextPeriod()
 		m.updateTrendsData()
 		m.updateViewportContent()
+	default:
+		// Let viewport handle scrolling
+		var cmd tea.Cmd
+		m.viewport, cmd = m.viewport.Update(msg)
+		return m, cmd
 	}
 	return m, nil
 }
@@ -498,25 +471,26 @@ func (m Model) View() string {
 	}
 
 	hints := m.getHints()
+	content := m.renderCurrentViewContent()
+	contentHeight := lipgloss.Height(content)
+	viewportHeight := m.viewport.Height
+
+	// Center content vertically if it's shorter than the viewport
+	var mainArea string
+	if contentHeight < viewportHeight {
+		mainArea = lipgloss.Place(m.width, viewportHeight, lipgloss.Center, lipgloss.Center, content)
+	} else {
+		mainArea = m.viewport.View()
+	}
 
 	return lipgloss.JoinVertical(lipgloss.Left,
-		m.viewport.View(),
+		mainArea,
 		lipgloss.Place(m.width, statisticsHintsHeight, lipgloss.Center, lipgloss.Center, hints),
 	)
 }
 
 // getHints returns the context-aware hints for the current view.
 func (m Model) getHints() string {
-	// If filter panel is open, show filter hints
-	if m.filterPanel.IsOpen() {
-		return components.RenderHintsStructured([]components.Hint{
-			{Key: "Esc", Action: "Close"},
-			{Key: "↑↓", Action: "Field"},
-			{Key: "←→", Action: "Change"},
-			{Key: "Tab", Action: "Apply"},
-		})
-	}
-
 	switch m.view {
 	case ViewDashboard:
 		return components.RenderHintsStructured([]components.Hint{
@@ -529,7 +503,9 @@ func (m Model) getHints() string {
 	case ViewOperations:
 		hintList := []components.Hint{
 			{Key: "Esc", Action: "Back"},
-			{Key: "Tab", Action: "Filters"},
+			{Key: "c", Action: "Category"},
+			{Key: "d", Action: "Difficulty"},
+			{Key: "p", Action: "Period"},
 		}
 		if len(m.operationList) > 0 {
 			hintList = append(hintList,
@@ -537,7 +513,6 @@ func (m Model) getHints() string {
 				components.Hint{Key: "Enter", Action: "Details"},
 			)
 		}
-		hintList = append(hintList, components.Hint{Key: "D", Action: "Dashboard"})
 		return components.RenderHintsStructured(hintList)
 
 	case ViewOperationDetail:
@@ -560,12 +535,11 @@ func (m Model) getHints() string {
 	case ViewHistory:
 		hintList := []components.Hint{
 			{Key: "Esc", Action: "Back"},
-			{Key: "Tab", Action: "Filters"},
+			{Key: "c", Action: "Category"},
+			{Key: "d", Action: "Difficulty"},
+			{Key: "p", Action: "Period"},
 			{Key: "↑↓", Action: "Navigate"},
 			{Key: "Enter", Action: "Details"},
-		}
-		if m.historyNav.TotalPages() > 1 {
-			hintList = append(hintList, components.Hint{Key: "←→", Action: "Page"})
 		}
 		return components.RenderHintsStructured(hintList)
 
@@ -594,9 +568,8 @@ func (m Model) getHints() string {
 	case ViewTrends:
 		return components.RenderHintsStructured([]components.Hint{
 			{Key: "Esc", Action: "Back"},
-			{Key: "↑↓", Action: "Selector"},
-			{Key: "←→", Action: "Change"},
-			{Key: "D", Action: "Dashboard"},
+			{Key: "m", Action: "Metric"},
+			{Key: "p", Action: "Period"},
 		})
 
 	default:
@@ -672,17 +645,11 @@ func (m Model) renderCurrentViewContent() string {
 		if m.opDetailDifficultyIdx < len(diffs) {
 			diffFilter = diffs[m.opDetailDifficultyIdx]
 		}
-		periods := analytics.AllTimePeriods()
-		var period analytics.TimePeriod
-		if m.opDetailTimePeriodIdx < len(periods) {
-			period = periods[m.opDetailTimePeriodIdx]
-		}
 		content = RenderOperationDetailContent(
 			m.selectedOperation,
 			extStats,
 			mistakes,
 			diffFilter,
-			period,
 			m.width,
 		)
 

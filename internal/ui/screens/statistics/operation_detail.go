@@ -18,7 +18,6 @@ func RenderOperationDetailContent(
 	extStats analytics.ExtendedOperationStats,
 	mistakes []analytics.RecentMistake,
 	difficultyFilter string,
-	timePeriod analytics.TimePeriod,
 	width int,
 ) string {
 	var b strings.Builder
@@ -28,13 +27,12 @@ func RenderOperationDetailContent(
 	b.WriteString(styles.Bold.Render(title))
 	b.WriteString("\n\n")
 
-	// Inline filters
+	// Filter status
 	diffDisplay := "All Difficulties"
 	if difficultyFilter != "" {
 		diffDisplay = difficultyFilter
 	}
-	filterLine := fmt.Sprintf("Filter: ◀ %s ▶       ◀ %s ▶", diffDisplay, timePeriod.String())
-	b.WriteString(styles.Dim.Render(filterLine))
+	b.WriteString(styles.Dim.Render(diffDisplay))
 	b.WriteString("\n\n")
 
 	// Separator

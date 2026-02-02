@@ -31,8 +31,13 @@ func RenderHistoryContent(
 	b.WriteString(styles.Bold.Render("STATISTICS · HISTORY"))
 	b.WriteString("\n\n")
 
-	// Filter summary
-	b.WriteString(styles.Dim.Render("Filter: " + filterPanel.FilterSummary()))
+	// Filter status
+	filterLine := fmt.Sprintf("%s  •  %s  •  %s",
+		filterPanel.GetCategoryDisplay(),
+		filterPanel.GetDifficultyDisplay(),
+		filterPanel.GetTimePeriodDisplay(),
+	)
+	b.WriteString(styles.Dim.Render(filterLine))
 	b.WriteString("\n\n")
 
 	// Separator
@@ -51,13 +56,7 @@ func RenderHistoryContent(
 		b.WriteString(styles.Dim.Render("Try different filters or play more games!"))
 		b.WriteString("\n")
 
-		mainContent := b.String()
-
-		if filterPanel.IsOpen() {
-			mainContent = filterPanel.OverlayView(mainContent, width)
-		}
-
-		return mainContent
+		return b.String()
 	}
 
 	// Column headers
@@ -108,14 +107,7 @@ func RenderHistoryContent(
 		b.WriteString(lipgloss.Place(separatorWidth, 1, lipgloss.Center, lipgloss.Center, styles.Dim.Render(pageInfo)))
 	}
 
-	mainContent := b.String()
-
-	// Layout with filter panel overlay if open
-	if filterPanel.IsOpen() {
-		mainContent = filterPanel.OverlayView(mainContent, width)
-	}
-
-	return mainContent
+	return b.String()
 }
 
 // renderSessionRow renders a single session row.

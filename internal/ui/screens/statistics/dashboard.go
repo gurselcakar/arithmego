@@ -26,19 +26,14 @@ func RenderDashboardContent(agg analytics.ExtendedAggregates, width int) string 
 	sections = append(sections, styles.Bold.Render("STATISTICS"))
 	sections = append(sections, "")
 
-	// Hero metric - total points in a centered box
-	sections = append(sections, renderHeroPoints(agg.TotalPoints))
-	sections = append(sections, "")
-
-	// Quick stats row
-	sessions := fmt.Sprintf("%d sessions", agg.TotalSessions)
-	accuracy := fmt.Sprintf("%.0f%% accuracy", agg.OverallAccuracy)
-	quickStats := sessions + "   •   " + accuracy
-	sections = append(sections, quickStats)
+	// Stats row: points • sessions • accuracy
+	statsRow := fmt.Sprintf("%d points  •  %d sessions  •  %.0f%% accuracy",
+		agg.TotalPoints, agg.TotalSessions, agg.OverallAccuracy)
+	sections = append(sections, statsRow)
 	sections = append(sections, "")
 
 	// Separator
-	sections = append(sections, renderSeparator(38))
+	sections = append(sections, renderSeparator(52))
 	sections = append(sections, "")
 
 	// Operations section (only show played operations)
@@ -46,69 +41,27 @@ func RenderDashboardContent(agg analytics.ExtendedAggregates, width int) string 
 	if opSection != "" {
 		sections = append(sections, opSection)
 		sections = append(sections, "")
-		sections = append(sections, renderSeparator(38))
+		sections = append(sections, renderSeparator(52))
 		sections = append(sections, "")
 	}
 
-	// Personal Bests section
-	sections = append(sections, renderPersonalBestsSection(agg))
+	// Records section
+	sections = append(sections, renderRecordsSection(agg))
 	sections = append(sections, "")
-	sections = append(sections, renderSeparator(38))
+	sections = append(sections, renderSeparator(52))
 	sections = append(sections, "")
 
-	// Time thinking
+	// Footer: thinking time (prominent) and last played (dimmed)
 	if agg.TotalResponseTimeMs > 0 {
 		thinkingTime := FormatThinkingTime(agg.TotalResponseTimeMs)
-		sections = append(sections, fmt.Sprintf("⏱  %s time thinking", thinkingTime))
+		sections = append(sections, thinkingTime+" thinking")
 		sections = append(sections, "")
 	}
-
-	// Last played
 	if !agg.LastPlayedAt.IsZero() {
 		sections = append(sections, styles.Dim.Render("Last played: "+FormatRelativeTime(agg.LastPlayedAt)))
 	}
 
 	return lipgloss.JoinVertical(lipgloss.Center, sections...)
-}
-
-// renderHeroPoints renders the total points in a centered box.
-func renderHeroPoints(points int) string {
-	pointsStr := fmt.Sprintf("%d", points)
-	label := "total points"
-
-	// Calculate box width based on content
-	contentWidth := len(pointsStr)
-	if len(label) > contentWidth {
-		contentWidth = len(label)
-	}
-	boxWidth := contentWidth + 6 // padding on each side
-
-	// Build the box
-	var lines []string
-
-	// Top border
-	lines = append(lines, "╭"+strings.Repeat("─", boxWidth)+"╮")
-
-	// Empty line
-	lines = append(lines, "│"+strings.Repeat(" ", boxWidth)+"│")
-
-	// Points value (centered)
-	pointsPadding := (boxWidth - len(pointsStr)) / 2
-	pointsLine := "│" + strings.Repeat(" ", pointsPadding) + styles.ScoreLarge.Render(pointsStr) + strings.Repeat(" ", boxWidth-pointsPadding-len(pointsStr)) + "│"
-	lines = append(lines, pointsLine)
-
-	// Label (centered)
-	labelPadding := (boxWidth - len(label)) / 2
-	labelLine := "│" + strings.Repeat(" ", labelPadding) + styles.Dim.Render(label) + strings.Repeat(" ", boxWidth-labelPadding-len(label)) + "│"
-	lines = append(lines, labelLine)
-
-	// Empty line
-	lines = append(lines, "│"+strings.Repeat(" ", boxWidth)+"│")
-
-	// Bottom border
-	lines = append(lines, "╰"+strings.Repeat("─", boxWidth)+"╯")
-
-	return strings.Join(lines, "\n")
 }
 
 // renderSeparator renders a horizontal separator line.
@@ -151,7 +104,7 @@ func renderOperationsSection(agg analytics.ExtendedAggregates) string {
 	})
 
 	var lines []string
-	lines = append(lines, styles.Bold.Render("YOUR OPERATIONS"))
+	lines = append(lines, styles.Bold.Render("OPERATIONS"))
 	lines = append(lines, "")
 
 	// Find max operation name length for alignment
@@ -191,54 +144,50 @@ func renderOperationsSection(agg analytics.ExtendedAggregates) string {
 	return strings.Join(lines, "\n")
 }
 
-// renderPersonalBestsSection renders the personal bests.
-func renderPersonalBestsSection(agg analytics.ExtendedAggregates) string {
+// renderRecordsSection renders the records in a 2x2 grid.
+func renderRecordsSection(agg analytics.ExtendedAggregates) string {
 	var lines []string
-	lines = append(lines, styles.Bold.Render("PERSONAL BESTS"))
+	lines = append(lines, styles.Bold.Render("RECORDS"))
 	lines = append(lines, "")
 
-	labelWidth := 16
-	valueWidth := 6
-	totalWidth := labelWidth + valueWidth
+	// Build 2x2 grid: Best Streak | High Score
+	//                 Best Acc    | Fastest
+	colWidth := 24
 
-	// Best Streak
+	// Row 1: Best Streak and High Score
+	streak := ""
 	if agg.PersonalBests.BestStreak > 0 {
-		lines = append(lines, formatBestLine("Best Streak", fmt.Sprintf("%d", agg.PersonalBests.BestStreak), labelWidth, totalWidth))
+		streak = fmt.Sprintf("Best Streak   %-6d", agg.PersonalBests.BestStreak)
 	}
-
-	// High Score
+	score := ""
 	if agg.PersonalBests.BestScore > 0 {
-		lines = append(lines, formatBestLine("High Score", fmt.Sprintf("%d", agg.PersonalBests.BestScore), labelWidth, totalWidth))
+		score = fmt.Sprintf("High Score   %-6d", agg.PersonalBests.BestScore)
+	}
+	if streak != "" || score != "" {
+		row1 := fmt.Sprintf("%-*s%s", colWidth, streak, score)
+		lines = append(lines, row1)
 	}
 
-	// Best Accuracy (only show if meaningful - requires min 10 questions)
+	// Row 2: Best Accuracy and Fastest
+	acc := ""
 	if agg.PersonalBests.BestAccuracy > 0 {
-		lines = append(lines, formatBestLine("Best Accuracy", fmt.Sprintf("%.0f%%", agg.PersonalBests.BestAccuracy), labelWidth, totalWidth))
+		acc = fmt.Sprintf("Best Acc      %-6s", fmt.Sprintf("%.0f%%", agg.PersonalBests.BestAccuracy))
 	}
-
-	// Fastest Answer
+	fastest := ""
 	if agg.FastestResponseMs > 0 {
-		lines = append(lines, formatBestLine("Fastest Answer", FormatResponseTime(agg.FastestResponseMs), labelWidth, totalWidth))
+		fastest = fmt.Sprintf("Fastest      %-6s", FormatResponseTime(agg.FastestResponseMs))
+	}
+	if acc != "" || fastest != "" {
+		row2 := fmt.Sprintf("%-*s%s", colWidth, acc, fastest)
+		lines = append(lines, row2)
 	}
 
-	// If no personal bests yet
+	// If no records yet
 	if len(lines) == 2 {
 		lines = append(lines, styles.Dim.Render("Play more to unlock!"))
 	}
 
 	return strings.Join(lines, "\n")
-}
-
-// formatBestLine formats a personal best line with label and value.
-// All lines are padded to totalWidth for consistent alignment when centered.
-func formatBestLine(label, value string, labelWidth, totalWidth int) string {
-	paddedLabel := label + strings.Repeat(" ", labelWidth-len(label))
-	line := paddedLabel + value
-	// Pad to total width for consistent centering
-	if len(line) < totalWidth {
-		line += strings.Repeat(" ", totalWidth-len(line))
-	}
-	return line
 }
 
 // renderEmptyDashboardContent renders the empty state content for dashboard.

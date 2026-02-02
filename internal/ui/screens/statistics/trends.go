@@ -7,19 +7,11 @@ import (
 	"github.com/gurselcakar/arithmego/internal/ui/styles"
 )
 
-// TrendsFocus represents which selector is focused in trends view.
-type TrendsFocus int
-
-const (
-	TrendsFocusMetric TrendsFocus = iota
-	TrendsFocusPeriod
-)
 
 // TrendsState holds the state for the trends view.
 type TrendsState struct {
 	Metric    analytics.TrendMetric
 	Period    analytics.TimePeriod
-	Focus     TrendsFocus
 	TrendData analytics.TrendData
 	Insights  []analytics.Insight
 }
@@ -96,12 +88,9 @@ func RenderTrendsContent(
 	b.WriteString(styles.Bold.Render("STATISTICS · TRENDS"))
 	b.WriteString("\n\n")
 
-	// Selectors
-	metricSelector := formatTrendSelector(state.Metric.String(), state.Focus == TrendsFocusMetric)
-	periodSelector := formatTrendSelector(state.Period.String(), state.Focus == TrendsFocusPeriod)
-
-	selectorLine := "Metric: " + metricSelector + "           Period: " + periodSelector
-	b.WriteString(selectorLine)
+	// Filter status
+	filterLine := state.Metric.String() + "  •  " + state.Period.String()
+	b.WriteString(styles.Dim.Render(filterLine))
 	b.WriteString("\n\n")
 
 	// Separator
@@ -173,10 +162,3 @@ func RenderTrendsContent(
 	return b.String()
 }
 
-// formatTrendSelector formats a selector value with arrows.
-func formatTrendSelector(value string, focused bool) string {
-	if focused {
-		return styles.Accent.Render("◀") + " " + styles.Bold.Render(value) + " " + styles.Accent.Render("▶")
-	}
-	return styles.Dim.Render("◀") + " " + value + " " + styles.Dim.Render("▶")
-}
