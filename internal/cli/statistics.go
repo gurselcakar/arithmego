@@ -12,8 +12,9 @@ var statisticsCmd = &cobra.Command{
 	Short:   "View your performance statistics",
 	Long: `Open the statistics screen to view your game history and performance.
 
-Shows overall accuracy, per-operation breakdown, and best streaks.
-Press 'D' for detailed view, 'S' for summary, Esc to exit.`,
+The dashboard shows overall accuracy, personal bests, and insights.
+Navigate between views using: O (Operations), H (History), T (Trends).
+Press Esc to return to menu.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		runTUI(ui.StartModeStatistics)
 	},

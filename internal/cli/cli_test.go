@@ -1,100 +1,12 @@
 package cli
 
 import (
-	"os"
-	"path/filepath"
 	"testing"
 
-	"github.com/gurselcakar/arithmego/internal/storage"
-	"github.com/gurselcakar/arithmego/internal/ui"
+	"github.com/spf13/cobra"
+
+	"github.com/gurselcakar/arithmego/internal/modes"
 )
-
-func TestDeterminePlayStartMode(t *testing.T) {
-	// Save original config path and restore after tests
-	originalHome := os.Getenv("HOME")
-	defer os.Setenv("HOME", originalHome)
-
-	t.Run("returns onboarding when no config exists", func(t *testing.T) {
-		// Use temp dir as HOME to ensure no config exists
-		tmpDir := t.TempDir()
-		os.Setenv("HOME", tmpDir)
-
-		mode := determinePlayStartMode()
-		if mode != ui.StartModeOnboarding {
-			t.Errorf("expected StartModeOnboarding, got %v", mode)
-		}
-	})
-
-	t.Run("returns onboarding when config has no last played data", func(t *testing.T) {
-		tmpDir := t.TempDir()
-		os.Setenv("HOME", tmpDir)
-
-		// Create config dir and empty config
-		configDir := filepath.Join(tmpDir, ".config", "arithmego")
-		if err := os.MkdirAll(configDir, 0755); err != nil {
-			t.Fatal(err)
-		}
-
-		config := storage.NewConfig()
-		if err := storage.SaveConfig(config); err != nil {
-			t.Fatal(err)
-		}
-
-		mode := determinePlayStartMode()
-		if mode != ui.StartModeOnboarding {
-			t.Errorf("expected StartModeOnboarding, got %v", mode)
-		}
-	})
-
-	t.Run("returns quick play when config has last played data", func(t *testing.T) {
-		tmpDir := t.TempDir()
-		os.Setenv("HOME", tmpDir)
-
-		// Create config dir
-		configDir := filepath.Join(tmpDir, ".config", "arithmego")
-		if err := os.MkdirAll(configDir, 0755); err != nil {
-			t.Fatal(err)
-		}
-
-		// Create config with last played data
-		config := storage.NewConfig()
-		config.LastPlayedModeID = "addition"
-		config.LastPlayedDifficulty = "Easy"
-		config.LastPlayedDurationMs = 60000
-		if err := storage.SaveConfig(config); err != nil {
-			t.Fatal(err)
-		}
-
-		mode := determinePlayStartMode()
-		if mode != ui.StartModeQuickPlay {
-			t.Errorf("expected StartModeQuickPlay, got %v", mode)
-		}
-	})
-
-	t.Run("returns onboarding when last played data is incomplete", func(t *testing.T) {
-		tmpDir := t.TempDir()
-		os.Setenv("HOME", tmpDir)
-
-		configDir := filepath.Join(tmpDir, ".config", "arithmego")
-		if err := os.MkdirAll(configDir, 0755); err != nil {
-			t.Fatal(err)
-		}
-
-		// Config with partial last played data (missing duration)
-		config := storage.NewConfig()
-		config.LastPlayedModeID = "addition"
-		config.LastPlayedDifficulty = "Easy"
-		// LastPlayedDurationMs is 0 (invalid)
-		if err := storage.SaveConfig(config); err != nil {
-			t.Fatal(err)
-		}
-
-		mode := determinePlayStartMode()
-		if mode != ui.StartModeOnboarding {
-			t.Errorf("expected StartModeOnboarding for incomplete data, got %v", mode)
-		}
-	})
-}
 
 func TestVersionVariables(t *testing.T) {
 	// Test that version variables have default values
@@ -160,4 +72,86 @@ func TestRootCommandSetup(t *testing.T) {
 		}
 		t.Error("statistics command not found")
 	})
+}
+
+func TestPlayCommandSetup(t *testing.T) {
+	t.Run("play command accepts mode argument", func(t *testing.T) {
+		// Find play command
+		var playCommand *cobra.Command
+		for _, cmd := range rootCmd.Commands() {
+			if cmd.Name() == "play" {
+				playCommand = cmd
+				break
+			}
+		}
+		if playCommand == nil {
+			t.Fatal("play command not found")
+		}
+
+		// Check Use includes [mode]
+		if playCommand.Use != "play [mode]" {
+			t.Errorf("expected Use to be 'play [mode]', got %q", playCommand.Use)
+		}
+	})
+
+	t.Run("play command has valid args function for completion", func(t *testing.T) {
+		var playCommand *cobra.Command
+		for _, cmd := range rootCmd.Commands() {
+			if cmd.Name() == "play" {
+				playCommand = cmd
+				break
+			}
+		}
+		if playCommand == nil {
+			t.Fatal("play command not found")
+		}
+
+		if playCommand.ValidArgsFunction == nil {
+			t.Error("play command should have ValidArgsFunction for tab completion")
+		}
+	})
+}
+
+func TestPlayCommandModeValidation(t *testing.T) {
+	// Ensure modes are registered for validation
+	modes.RegisterPresets()
+
+	tests := []struct {
+		modeID string
+		valid  bool
+	}{
+		// Basic modes
+		{"addition", true},
+		{"subtraction", true},
+		{"multiplication", true},
+		{"division", true},
+		// Power modes
+		{"squares", true},
+		{"cubes", true},
+		{"square-roots", true},
+		{"cube-roots", true},
+		// Advanced modes
+		{"exponents", true},
+		{"remainders", true},
+		{"percentages", true},
+		{"factorials", true},
+		// Mixed modes
+		{"mixed-basics", true},
+		{"mixed-powers", true},
+		{"mixed-advanced", true},
+		{"anything-goes", true},
+		// Invalid modes
+		{"invalid-mode", false},
+		{"", false},
+		{"add", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.modeID, func(t *testing.T) {
+			_, ok := modes.Get(tt.modeID)
+			if ok != tt.valid {
+				t.Errorf("modes.Get(%q) = %v, want %v", tt.modeID, ok, tt.valid)
+			}
+		})
+	}
 }

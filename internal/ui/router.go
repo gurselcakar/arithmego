@@ -24,8 +24,11 @@ type StartMode int
 const (
 	// StartModeMenu starts at the main menu (default behavior).
 	StartModeMenu StartMode = iota
-	// StartModeQuickPlay starts a quick play session immediately.
-	StartModeQuickPlay
+	// StartModePlayBrowse opens the play browse screen directly.
+	StartModePlayBrowse
+	// StartModePlayConfig opens the play config screen with a specific mode.
+	// Requires CLIModeID to be set.
+	StartModePlayConfig
 	// StartModeStatistics opens the statistics screen directly.
 	StartModeStatistics
 	// StartModeOnboarding starts the onboarding flow.

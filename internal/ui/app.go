@@ -47,7 +47,7 @@ type App struct {
 	lastSaveError error
 
 	// CLI start mode flags
-	startModeQuickPlay bool
+	cliStartMode StartMode
 
 	// First game tracking (for feature tour after onboarding)
 	isFirstGame bool
@@ -80,10 +80,14 @@ func NewWithStartMode(startMode StartMode) *App {
 
 	// Determine starting screen based on start mode
 	switch startMode {
-	case StartModeQuickPlay:
-		// Quick play - will be handled in Init() to start the game
+	case StartModePlayBrowse:
+		// Play browse - will be initialized in Init()
 		app.screen = ScreenMenu
-		app.startModeQuickPlay = true
+		app.cliStartMode = StartModePlayBrowse
+	case StartModePlayConfig:
+		// Play config with specific mode - will be initialized in Init()
+		app.screen = ScreenMenu
+		app.cliStartMode = StartModePlayConfig
 	case StartModeStatistics:
 		app.screen = ScreenStatistics
 	case StartModeOnboarding:
@@ -104,11 +108,17 @@ func NewWithStartMode(startMode StartMode) *App {
 func (a *App) Init() tea.Cmd {
 	var cmds []tea.Cmd
 
-	// Handle CLI quick play mode - trigger quick play on first tick
-	if a.startModeQuickPlay {
-		a.startModeQuickPlay = false // Reset flag
+	// Handle CLI start modes
+	switch a.cliStartMode {
+	case StartModePlayBrowse:
+		a.cliStartMode = StartModeMenu // Reset flag
 		cmds = append(cmds, func() tea.Msg {
-			return cliQuickPlayMsg{}
+			return cliPlayBrowseMsg{}
+		})
+	case StartModePlayConfig:
+		a.cliStartMode = StartModeMenu // Reset flag
+		cmds = append(cmds, func() tea.Msg {
+			return cliPlayConfigMsg{modeID: CLIModeID}
 		})
 	}
 
@@ -125,8 +135,13 @@ func (a *App) Init() tea.Cmd {
 	return tea.Batch(cmds...)
 }
 
-// cliQuickPlayMsg triggers quick play from CLI.
-type cliQuickPlayMsg struct{}
+// cliPlayBrowseMsg triggers play browse from CLI.
+type cliPlayBrowseMsg struct{}
+
+// cliPlayConfigMsg triggers play config with a specific mode from CLI.
+type cliPlayConfigMsg struct {
+	modeID string
+}
 
 // updateCheckResultMsg carries the result of an update check.
 type updateCheckResultMsg struct {
@@ -136,6 +151,9 @@ type updateCheckResultMsg struct {
 
 // Version is the current app version, set by the CLI before starting the TUI.
 var Version = "dev"
+
+// CLIModeID is the mode ID specified via CLI, set before starting the TUI.
+var CLIModeID = ""
 
 // checkForUpdateCmd returns a command that checks for updates.
 func checkForUpdateCmd() tea.Cmd {
@@ -153,9 +171,14 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		a.height = wsm.Height
 	}
 
-	// Handle CLI quick play trigger
-	if _, ok := msg.(cliQuickPlayMsg); ok {
-		return a.startQuickPlay()
+	// Handle CLI play browse trigger
+	if _, ok := msg.(cliPlayBrowseMsg); ok {
+		return a.startPlayBrowse()
+	}
+
+	// Handle CLI play config trigger
+	if configMsg, ok := msg.(cliPlayConfigMsg); ok {
+		return a.startPlayConfig(configMsg.modeID)
 	}
 
 	// Handle update check result
@@ -606,23 +629,26 @@ func (a *App) startGame() (tea.Model, tea.Cmd) {
 	return a, a.gameModel.Init()
 }
 
-// startQuickPlay starts a game with the last played settings.
-func (a *App) startQuickPlay() (tea.Model, tea.Cmd) {
-	mode, ok := modes.Get(a.config.LastPlayedModeID)
+// startPlayBrowse opens the play browse screen from CLI.
+func (a *App) startPlayBrowse() (tea.Model, tea.Cmd) {
+	a.playBrowseModel = screens.NewPlayBrowse(a.config)
+	a.playBrowseModel.SetSize(a.width, a.height)
+	a.screen = ScreenPlayBrowse
+	return a, a.playBrowseModel.Init()
+}
+
+// startPlayConfig opens the play config screen with a specific mode from CLI.
+func (a *App) startPlayConfig(modeID string) (tea.Model, tea.Cmd) {
+	mode, ok := modes.Get(modeID)
 	if !ok || mode == nil {
-		// Mode no longer exists - fall back to Play Browse screen
-		a.playBrowseModel = screens.NewPlayBrowse(a.config)
-		a.playBrowseModel.SetSize(a.width, a.height)
-		a.screen = ScreenPlayBrowse
-		return a, a.playBrowseModel.Init()
+		// Mode not found - fall back to Play Browse screen
+		return a.startPlayBrowse()
 	}
 
-	a.currentMode = mode
-	a.lastDifficulty = game.ParseDifficulty(a.config.LastPlayedDifficulty)
-	a.lastDuration = time.Duration(a.config.LastPlayedDurationMs) * time.Millisecond
-	a.lastInputMethod = components.ParseInputMethod(a.config.InputMethod)
-
-	return a.startGame()
+	a.playConfigModel = screens.NewPlayConfig(mode, a.config)
+	a.playConfigModel.SetSize(a.width, a.height)
+	a.screen = ScreenPlayConfig
+	return a, a.playConfigModel.Init()
 }
 
 // saveLastPlayed saves the current game configuration to config.
