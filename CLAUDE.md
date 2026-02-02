@@ -2,15 +2,14 @@
 
 Command-line arithmetic game for developers. Built with Go, Bubble Tea, and Cobra.
 
-**Status:** Phase 11 in progress (Polish)
+**Status:** v0.1.0
 
 ## Docs
 
-- `docs/DESIGN.md` — Vision, mechanics, game modes
 - `docs/ARCHITECTURE.md` — Tech stack, project structure
-- `docs/ROADMAP.md` — Development phases
+- `docs/CONTRIBUTING.md` — Guidelines for contributors
 
-For detailed specs and session logs, see `.local/` (gitignored).
+For detailed specs, design docs, and session logs, see `.local/` (gitignored).
 
 ## Commands
 
