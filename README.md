@@ -1,13 +1,21 @@
-# ArithmeGo
+<div align="center">
+
+```
+ █████╗ ██████╗ ██╗████████╗██╗  ██╗███╗   ███╗███████╗ ██████╗  ██████╗
+██╔══██╗██╔══██╗██║╚══██╔══╝██║  ██║████╗ ████║██╔════╝██╔════╝ ██╔═══██╗
+███████║██████╔╝██║   ██║   ███████║██╔████╔██║█████╗  ██║  ███╗██║   ██║
+██╔══██║██╔══██╗██║   ██║   ██╔══██║██║╚██╔╝██║██╔══╝  ██║   ██║██║   ██║
+██║  ██║██║  ██║██║   ██║   ██║  ██║██║ ╚═╝ ██║███████╗╚██████╔╝╚██████╔╝
+╚═╝  ╚═╝╚═╝  ╚═╝╚═╝   ╚═╝   ╚═╝  ╚═╝╚═╝     ╚═╝╚══════╝ ╚═════╝  ╚═════╝
+```
 
 **Your AI is thinking. You should too.**
 
-A terminal-based arithmetic game for developers. Built with Go, Bubble Tea, and Cobra.
+[![Build](https://img.shields.io/github/actions/workflow/status/gurselcakar/arithmego/ci.yml?branch=main)](https://github.com/gurselcakar/arithmego/actions)
+[![Release](https://img.shields.io/github/v/release/gurselcakar/arithmego)](https://github.com/gurselcakar/arithmego/releases)
+[![License](https://img.shields.io/github/license/gurselcakar/arithmego)](LICENSE)
 
-<!-- Badges -->
-![Build Status](https://img.shields.io/badge/build-passing-brightgreen)
-![Go Version](https://img.shields.io/badge/go-1.25+-blue)
-![License](https://img.shields.io/badge/license-MIT-green)
+</div>
 
 ---
 
@@ -55,7 +63,7 @@ Download the latest `.zip` from [Releases](https://github.com/gurselcakar/arithm
 
 ## Usage
 
-```bash
+```
 arithmego            # Open main menu (TUI)
 arithmego play       # Quick play with last settings
 arithmego statistics # View stats directly
@@ -73,7 +81,7 @@ arithmego version    # Show version info
 
 ### Commands
 
-```bash
+```
 make build    # Build for current platform
 make run      # Build and run
 make test     # Run tests
