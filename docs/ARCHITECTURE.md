@@ -161,8 +161,15 @@ arithmego/
 │       ├── aggregator.go
 │       └── insights.go
 │
-├── scripts/
-│   └── install.sh
+├── website/                       # Hugo website (arithmego.com)
+│   ├── static/
+│   │   └── install.sh             # Install script served at /install.sh
+│   ├── content/
+│   │   ├── _index.md              # Landing page
+│   │   └── docs/                  # Documentation
+│   ├── layouts/
+│   ├── assets/
+│   └── hugo.toml
 │
 ├── .github/
 │   └── workflows/
@@ -307,13 +314,35 @@ Reusable UI elements in `internal/ui/components/`:
 
 ---
 
+## Website
+
+The `website/` folder contains a Hugo-based site for arithmego.com:
+
+| Path | Purpose |
+|------|---------|
+| `static/install.sh` | Install script (served at `/install.sh`) |
+| `content/_index.md` | Landing page |
+| `content/docs/` | Documentation pages |
+
+The website serves as both landing page and documentation hub.
+
+---
+
 ## Distribution
 
-Primary method: curl install script
+Primary method: curl install script served from the website.
 
 ```bash
 curl -fsSL https://arithmego.com/install.sh | bash
 ```
+
+### How It Works
+
+1. User runs the curl command
+2. Website serves `install.sh` from `website/static/`
+3. Script detects OS/architecture
+4. Script downloads appropriate binary from GitHub Releases
+5. Binary is installed to user's PATH
 
 ### Supported Platforms
 
