@@ -21,7 +21,8 @@ type App struct {
 
 	// Screen models
 	menuModel        screens.MenuModel
-	playModel        screens.PlayModel
+	playBrowseModel  screens.PlayBrowseModel
+	playConfigModel  screens.PlayConfigModel
 	gameModel        screens.GameModel
 	pauseModel       screens.PauseModel
 	resultsModel     screens.ResultsModel
@@ -70,7 +71,6 @@ func NewWithStartMode(startMode StartMode) *App {
 
 	app := &App{
 		menuModel:       screens.NewMenu(),
-		playModel:       screens.NewPlay(config),
 		practiceModel:   screens.NewPractice(),
 		statisticsModel: screens.NewStatistics(),
 		settingsModel:   screens.NewSettings(config),
@@ -172,8 +172,10 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch a.screen {
 	case ScreenMenu:
 		return a.updateMenu(msg)
-	case ScreenPlay:
-		return a.updatePlay(msg)
+	case ScreenPlayBrowse:
+		return a.updatePlayBrowse(msg)
+	case ScreenPlayConfig:
+		return a.updatePlayConfig(msg)
 	case ScreenGame:
 		return a.updateGame(msg)
 	case ScreenPause:
@@ -206,10 +208,10 @@ func (a *App) updateMenu(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if selectMsg, ok := msg.(screens.MenuSelectMsg); ok {
 		switch selectMsg.Action {
 		case screens.ActionPlay:
-			a.playModel = screens.NewPlay(a.config)
-			a.playModel.SetSize(a.width, a.height)
-			a.screen = ScreenPlay
-			return a, a.playModel.Init()
+			a.playBrowseModel = screens.NewPlayBrowse(a.config)
+			a.playBrowseModel.SetSize(a.width, a.height)
+			a.screen = ScreenPlayBrowse
+			return a, a.playBrowseModel.Init()
 		case screens.ActionPractice:
 			a.practiceModel = screens.NewPractice()
 			a.practiceModel.SetSize(a.width, a.height)
@@ -236,10 +238,32 @@ func (a *App) updateMenu(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return a, cmd
 }
 
-// updatePlay handles play screen updates.
-func (a *App) updatePlay(msg tea.Msg) (tea.Model, tea.Cmd) {
+// updatePlayBrowse handles play browse screen updates.
+func (a *App) updatePlayBrowse(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
-	a.playModel, cmd = a.playModel.Update(msg)
+	a.playBrowseModel, cmd = a.playBrowseModel.Update(msg)
+
+	// Check for mode selection
+	if selectMsg, ok := msg.(screens.ModeSelectedMsg); ok {
+		a.playConfigModel = screens.NewPlayConfig(selectMsg.Mode, a.config)
+		a.playConfigModel.SetSize(a.width, a.height)
+		a.screen = ScreenPlayConfig
+		return a, a.playConfigModel.Init()
+	}
+
+	// Check for return to menu
+	if _, ok := msg.(screens.ReturnToMenuMsg); ok {
+		a.screen = ScreenMenu
+		return a, nil
+	}
+
+	return a, cmd
+}
+
+// updatePlayConfig handles play config screen updates.
+func (a *App) updatePlayConfig(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
+	a.playConfigModel, cmd = a.playConfigModel.Update(msg)
 
 	// Check for start game
 	if startMsg, ok := msg.(screens.StartGameMsg); ok {
@@ -250,9 +274,9 @@ func (a *App) updatePlay(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return a.startGame()
 	}
 
-	// Check for return to menu
-	if _, ok := msg.(screens.ReturnToMenuMsg); ok {
-		a.screen = ScreenMenu
+	// Check for back to browse
+	if _, ok := msg.(screens.BackToBrowseMsg); ok {
+		a.screen = ScreenPlayBrowse
 		return a, nil
 	}
 
@@ -547,12 +571,12 @@ func (a *App) completeOnboarding(modeID, difficulty string, durationMs int64, in
 	// Set up game state
 	mode, ok := modes.Get(modeID)
 	if !ok || mode == nil {
-		// Mode doesn't exist - fall back to Play screen
+		// Mode doesn't exist - fall back to Play Browse screen
 		a.isFirstGame = false
-		a.playModel = screens.NewPlay(a.config)
-		a.playModel.SetSize(a.width, a.height)
-		a.screen = ScreenPlay
-		return a, a.playModel.Init()
+		a.playBrowseModel = screens.NewPlayBrowse(a.config)
+		a.playBrowseModel.SetSize(a.width, a.height)
+		a.screen = ScreenPlayBrowse
+		return a, a.playBrowseModel.Init()
 	}
 	a.currentMode = mode
 	a.lastDifficulty = game.ParseDifficulty(difficulty)
@@ -564,15 +588,15 @@ func (a *App) completeOnboarding(modeID, difficulty string, durationMs int64, in
 }
 
 // startGame creates a new session and starts the game.
-// If mode is invalid, gracefully returns to the Play screen.
+// If mode is invalid, gracefully returns to the Play Browse screen.
 func (a *App) startGame() (tea.Model, tea.Cmd) {
 	if a.currentMode == nil || len(a.currentMode.Operations) == 0 {
-		// Gracefully recover: return to Play screen instead of crashing
+		// Gracefully recover: return to Play Browse screen instead of crashing
 		a.isFirstGame = false // Reset flag on error
-		a.playModel = screens.NewPlay(a.config)
-		a.playModel.SetSize(a.width, a.height)
-		a.screen = ScreenPlay
-		return a, a.playModel.Init()
+		a.playBrowseModel = screens.NewPlayBrowse(a.config)
+		a.playBrowseModel.SetSize(a.width, a.height)
+		a.screen = ScreenPlayBrowse
+		return a, a.playBrowseModel.Init()
 	}
 
 	a.session = game.NewSession(a.currentMode.Operations, a.lastDifficulty, a.lastDuration)
@@ -586,11 +610,11 @@ func (a *App) startGame() (tea.Model, tea.Cmd) {
 func (a *App) startQuickPlay() (tea.Model, tea.Cmd) {
 	mode, ok := modes.Get(a.config.LastPlayedModeID)
 	if !ok || mode == nil {
-		// Mode no longer exists - fall back to Play screen
-		a.playModel = screens.NewPlay(a.config)
-		a.playModel.SetSize(a.width, a.height)
-		a.screen = ScreenPlay
-		return a, a.playModel.Init()
+		// Mode no longer exists - fall back to Play Browse screen
+		a.playBrowseModel = screens.NewPlayBrowse(a.config)
+		a.playBrowseModel.SetSize(a.width, a.height)
+		a.screen = ScreenPlayBrowse
+		return a, a.playBrowseModel.Init()
 	}
 
 	a.currentMode = mode
@@ -635,8 +659,10 @@ func (a *App) View() string {
 	switch a.screen {
 	case ScreenMenu:
 		return a.menuModel.View()
-	case ScreenPlay:
-		return a.playModel.View()
+	case ScreenPlayBrowse:
+		return a.playBrowseModel.View()
+	case ScreenPlayConfig:
+		return a.playConfigModel.View()
 	case ScreenGame:
 		return a.gameModel.View()
 	case ScreenPause:

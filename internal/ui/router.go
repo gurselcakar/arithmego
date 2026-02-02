@@ -5,7 +5,8 @@ type Screen int
 
 const (
 	ScreenMenu Screen = iota
-	ScreenPlay       // Unified play screen (Phase 11)
+	ScreenPlayBrowse  // Mode browser (Step 1 of play flow)
+	ScreenPlayConfig  // Configure & start (Step 2 of play flow)
 	ScreenGame
 	ScreenPause
 	ScreenResults

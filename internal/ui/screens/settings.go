@@ -290,8 +290,8 @@ func (m SettingsModel) renderSettingsContent() string {
 
 	// All possible values across all selectors
 	allValues := []string{}
-	allValues = append(allValues, settingsDifficultyNames(diffs)...)
-	allValues = append(allValues, settingsDurationNames(durs)...)
+	allValues = append(allValues, difficultyNames(diffs)...)
+	allValues = append(allValues, durationLabels(durs)...)
 	allValues = append(allValues, inputOptions...)
 
 	// Calculate widths dynamically
@@ -312,7 +312,7 @@ func (m SettingsModel) renderSettingsContent() string {
 
 	// Game defaults rows
 	difficultyRow := focusPrefix(m.focusedField == SettingsFieldDifficulty) +
-		components.RenderSelector(m.difficultyIndex, settingsDifficultyNames(diffs), components.SelectorOptions{
+		components.RenderSelector(m.difficultyIndex, difficultyNames(diffs), components.SelectorOptions{
 			Label:      "Difficulty",
 			LabelWidth: labelWidth,
 			ValueWidth: valueWidth,
@@ -320,7 +320,7 @@ func (m SettingsModel) renderSettingsContent() string {
 		})
 
 	durationRow := focusPrefix(m.focusedField == SettingsFieldDuration) +
-		components.RenderSelector(m.durationIndex, settingsDurationNames(durs), components.SelectorOptions{
+		components.RenderSelector(m.durationIndex, durationLabels(durs), components.SelectorOptions{
 			Label:      "Duration",
 			LabelWidth: labelWidth,
 			ValueWidth: valueWidth,
@@ -384,34 +384,7 @@ func (m *SettingsModel) Config() *storage.Config {
 	return m.config
 }
 
-// Helper functions (shared across screens package)
-
-// maxLen returns the length of the longest string in the slice.
-func maxLen(items []string) int {
-	max := 0
-	for _, s := range items {
-		if len(s) > max {
-			max = len(s)
-		}
-	}
-	return max
-}
-
-func findDifficultyIndex(name string) int {
-	diffs := game.AllDifficulties()
-	for i, d := range diffs {
-		if d.String() == name {
-			return i
-		}
-	}
-	// Fallback: find the default difficulty
-	for i, d := range diffs {
-		if d.String() == storage.DefaultDifficulty {
-			return i
-		}
-	}
-	return 0
-}
+// Helper functions
 
 func findDurationIndexByMs(ms int64) int {
 	for i, d := range modes.AllowedDurations {
@@ -422,15 +395,7 @@ func findDurationIndexByMs(ms int64) int {
 	return 1 // Default to 60s (index 1)
 }
 
-func settingsDifficultyNames(diffs []game.Difficulty) []string {
-	names := make([]string, len(diffs))
-	for i, d := range diffs {
-		names[i] = d.String()
-	}
-	return names
-}
-
-func settingsDurationNames(durs []modes.Duration) []string {
+func durationLabels(durs []modes.Duration) []string {
 	names := make([]string, len(durs))
 	for i, d := range durs {
 		names[i] = d.Label

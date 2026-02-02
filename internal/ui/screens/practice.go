@@ -724,7 +724,7 @@ func (m PracticeModel) renderSettingsPanel() string {
 	b.WriteString("\n")
 	b.WriteString(m.renderHorizontalSelector(
 		m.difficultyIdx,
-		difficultyNames(),
+		difficultyNames(game.AllDifficulties()),
 		m.settingsField == PracticeFieldDifficulty,
 	))
 	b.WriteString("\n\n")
@@ -776,15 +776,6 @@ func categoryDisplayName(cat game.Category) string {
 	default:
 		return string(cat)
 	}
-}
-
-func difficultyNames() []string {
-	diffs := game.AllDifficulties()
-	names := make([]string, len(diffs))
-	for i, d := range diffs {
-		names[i] = d.String()
-	}
-	return names
 }
 
 func categoryNames(cats []game.Category) []string {

@@ -41,7 +41,7 @@ func RegisterPresets() {
 	Register(&Mode{
 		ID:                IDAddition,
 		Name:              "Addition",
-		Description:       "Practice addition problems",
+		Description:       "Calculate a + b",
 		Operations:        getOperations("Addition"),
 		DefaultDifficulty: game.Medium,
 		DefaultDuration:   60 * time.Second,
@@ -51,7 +51,7 @@ func RegisterPresets() {
 	Register(&Mode{
 		ID:                IDSubtraction,
 		Name:              "Subtraction",
-		Description:       "Practice subtraction problems",
+		Description:       "Calculate a − b",
 		Operations:        getOperations("Subtraction"),
 		DefaultDifficulty: game.Medium,
 		DefaultDuration:   60 * time.Second,
@@ -61,7 +61,7 @@ func RegisterPresets() {
 	Register(&Mode{
 		ID:                IDMultiplication,
 		Name:              "Multiplication",
-		Description:       "Practice multiplication problems",
+		Description:       "Calculate a × b",
 		Operations:        getOperations("Multiplication"),
 		DefaultDifficulty: game.Medium,
 		DefaultDuration:   60 * time.Second,
@@ -71,7 +71,7 @@ func RegisterPresets() {
 	Register(&Mode{
 		ID:                IDDivision,
 		Name:              "Division",
-		Description:       "Practice division problems",
+		Description:       "Calculate a ÷ b",
 		Operations:        getOperations("Division"),
 		DefaultDifficulty: game.Medium,
 		DefaultDuration:   60 * time.Second,
