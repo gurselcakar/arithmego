@@ -1,6 +1,6 @@
 # ArithmeGo
 
-Command-line arithmetic game for developers. Built with Go, Bubble Tea, and Cobra.
+Terminal-based arithmetic game for developers. Built with Go, Bubble Tea, and Cobra.
 
 **Status:** v0.1.0
 

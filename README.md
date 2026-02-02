@@ -2,7 +2,7 @@
 
 **Your AI is thinking. You should too.**
 
-A command-line arithmetic game for developers. Built with Go, Bubble Tea, and Cobra.
+A terminal-based arithmetic game for developers. Built with Go, Bubble Tea, and Cobra.
 
 <!-- Badges -->
 ![Build Status](https://img.shields.io/badge/build-passing-brightgreen)

@@ -23,8 +23,8 @@ var (
 
 var rootCmd = &cobra.Command{
 	Use:   "arithmego",
-	Short: "Command-line arithmetic game for developers",
-	Long: `ArithmeGo is a command-line arithmetic game designed for developers.
+	Short: "Terminal-based arithmetic game for developers",
+	Long: `ArithmeGo is a terminal-based arithmetic game designed for developers.
 Short sessions. Minimal friction. Never leave the terminal.
 
 Run without arguments to open the main menu.`,
