@@ -85,12 +85,18 @@ func NewWithStartMode(startMode StartMode) *App {
 		// Play browse - will be initialized in Init()
 		app.screen = ScreenMenu
 		app.cliStartMode = StartModePlayBrowse
+
 	case StartModePlayConfig:
 		// Play config with specific mode - will be initialized in Init()
 		app.screen = ScreenMenu
 		app.cliStartMode = StartModePlayConfig
+
 	case StartModeStatistics:
 		app.screen = ScreenStatistics
+
+	case StartModeSettings:
+		app.screen = ScreenSettings
+
 	case StartModeOnboarding:
 		app.screen = ScreenOnboarding
 	default:
@@ -308,8 +314,7 @@ func (a *App) updatePlayBrowse(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	// Check for return to menu
 	if _, ok := msg.(screens.ReturnToMenuMsg); ok {
-		a.screen = ScreenMenu
-		return a, nil
+		return a.returnToMenu()
 	}
 
 	return a, cmd
@@ -331,8 +336,7 @@ func (a *App) updatePlayConfig(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	// Check for back to browse
 	if _, ok := msg.(screens.BackToBrowseMsg); ok {
-		a.screen = ScreenPlayBrowse
-		return a, nil
+		return a.startPlayBrowse()
 	}
 
 	return a, cmd
@@ -459,9 +463,8 @@ func (a *App) updateResults(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Check for return to menu
 	if _, ok := msg.(screens.ReturnToMenuMsg); ok {
 		a.rebuildMenu()
-		a.screen = ScreenMenu
 		a.session = nil
-		return a, nil
+		return a.returnToMenu()
 	}
 
 	// Check for continue to feature tour (first game only)
@@ -478,8 +481,7 @@ func (a *App) updatePractice(msg tea.Msg) (tea.Model, tea.Cmd) {
 	a.practiceModel, cmd = a.practiceModel.Update(msg)
 
 	if _, ok := msg.(screens.ReturnToMenuMsg); ok {
-		a.screen = ScreenMenu
-		return a, nil
+		return a.returnToMenu()
 	}
 
 	return a, cmd
@@ -491,8 +493,7 @@ func (a *App) updateStatistics(msg tea.Msg) (tea.Model, tea.Cmd) {
 	a.statisticsModel, cmd = a.statisticsModel.Update(msg)
 
 	if _, ok := msg.(screens.ReturnToMenuMsg); ok {
-		a.screen = ScreenMenu
-		return a, nil
+		return a.returnToMenu()
 	}
 
 	return a, cmd
@@ -507,8 +508,7 @@ func (a *App) updateSettings(msg tea.Msg) (tea.Model, tea.Cmd) {
 	a.config = a.settingsModel.Config()
 
 	if _, ok := msg.(screens.ReturnToMenuMsg); ok {
-		a.screen = ScreenMenu
-		return a, nil
+		return a.returnToMenu()
 	}
 
 	return a, cmd
@@ -704,6 +704,13 @@ func (a *App) saveLastPlayed() {
 
 	// Ignore save errors - config is non-critical
 	_ = storage.SaveConfig(a.config)
+}
+
+// returnToMenu transitions to the menu screen, ensuring it's properly initialized.
+func (a *App) returnToMenu() (tea.Model, tea.Cmd) {
+	a.menuModel.SetSize(a.width, a.height)
+	a.screen = ScreenMenu
+	return a, nil
 }
 
 // rebuildMenu rebuilds the menu model.

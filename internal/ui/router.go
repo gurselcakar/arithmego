@@ -31,6 +31,8 @@ const (
 	StartModePlayConfig
 	// StartModeStatistics opens the statistics screen directly.
 	StartModeStatistics
+	// StartModeSettings opens the settings screen directly.
+	StartModeSettings
 	// StartModeOnboarding starts the onboarding flow.
 	StartModeOnboarding
 )
