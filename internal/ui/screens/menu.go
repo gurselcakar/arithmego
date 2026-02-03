@@ -26,6 +26,7 @@ const (
 	ActionPractice
 	ActionStatistics
 	ActionSettings
+	ActionX
 )
 
 // Layout constants for fixed sections
@@ -51,9 +52,10 @@ func NewMenu() MenuModel {
 		items: []MenuItem{
 			{Label: "Play", Action: ActionPlay},
 			{Label: "Practice", Action: ActionPractice},
-			{IsSpacer: true},
 			{Label: "Statistics", Action: ActionStatistics},
 			{Label: "Settings", Action: ActionSettings},
+			{IsSpacer: true},
+			{Label: "Follow me on X @gurselcakar", Action: ActionX},
 		},
 		cursor:        0,
 		viewport:      viewport.New(0, 0),
@@ -236,7 +238,14 @@ func (m MenuModel) renderMenuContent() string {
 		}
 		menuItems = append(menuItems, line)
 	}
-	menu := strings.Join(menuItems, "\n")
+	// Find the widest menu line so all items align when centered
+	maxWidth := 0
+	for _, line := range menuItems {
+		if w := lipgloss.Width(line); w > maxWidth {
+			maxWidth = w
+		}
+	}
+	menu := lipgloss.NewStyle().Width(maxWidth).Render(strings.Join(menuItems, "\n"))
 
 	// Build main content
 	content := lipgloss.JoinVertical(lipgloss.Center,

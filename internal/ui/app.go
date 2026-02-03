@@ -250,6 +250,8 @@ func (a *App) updateMenu(msg tea.Msg) (tea.Model, tea.Cmd) {
 			a.settingsModel.SetSize(a.width, a.height)
 			a.screen = ScreenSettings
 			return a, a.settingsModel.Init()
+		case screens.ActionX:
+			return a, openURL("https://x.com/gurselcakar")
 		}
 	}
 
