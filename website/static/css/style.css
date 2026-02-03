@@ -163,16 +163,35 @@ code {
   padding: 1.25rem 1.25rem;
   text-align: left;
   overflow-x: auto;
+  align-items: center;
+  gap: 0.75rem;
 }
 
 .install-panel.active {
-  display: block;
+  display: flex;
 }
 
 .install-panel code {
   font-size: 0.875rem;
   color: #e0e0e0;
   white-space: nowrap;
+}
+
+/* ===== Copy Button ===== */
+.copy-btn {
+  color: #4a4a4a;
+  background: none;
+  border: none;
+  padding: 0.25rem;
+  cursor: pointer;
+  transition: color 0.2s;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+.copy-btn:hover {
+  color: #ffffff;
 }
 
 .install-text {
@@ -519,8 +538,7 @@ code {
   padding: 0.75rem 1.25rem;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 1.5rem;
+  gap: 0.75rem;
 }
 
 .download-terminal code {
