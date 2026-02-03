@@ -25,3 +25,8 @@ go.work.sum
 
 # Local
 .local/
+
+# Hugo
+website/public/
+website/resources/
+website/.hugo_build.lock

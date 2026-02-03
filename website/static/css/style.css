@@ -1,0 +1,623 @@
+/* ===== Reset & Base ===== */
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: #0a0a0a;
+  color: #e0e0e0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: #8a8a8a;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+a:hover {
+  color: #ffffff;
+}
+
+code {
+  font-family: "SF Mono", "Fira Code", "Fira Mono", "Roboto Mono", "Courier New", monospace;
+}
+
+/* ===== Navbar ===== */
+.navbar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: rgba(10, 10, 10, 0.9);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid #1a1a1a;
+}
+
+.navbar-inner {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 0.875rem 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.navbar-brand {
+  font-family: "SF Mono", "Fira Code", "Fira Mono", "Roboto Mono", monospace;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #ffffff;
+  letter-spacing: -0.01em;
+}
+
+.navbar-brand:hover {
+  color: #ffffff;
+}
+
+.navbar-links {
+  display: flex;
+  gap: 1.5rem;
+}
+
+.navbar-links a {
+  font-size: 0.875rem;
+  color: #8a8a8a;
+}
+
+.navbar-links a:hover {
+  color: #ffffff;
+}
+
+.navbar-icon {
+  display: flex;
+  align-items: center;
+}
+
+/* ===== Hero ===== */
+.hero {
+  text-align: center;
+  padding: 6rem 1.5rem 4rem;
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+.hero-logo {
+  font-family: "SF Mono", "Fira Code", "Fira Mono", "Roboto Mono", monospace;
+  font-size: 0.55rem;
+  line-height: 1.2;
+  color: #ffffff;
+  display: inline-block;
+  text-align: left;
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+.hero-tagline {
+  margin-top: 1.5rem;
+  font-size: 1.25rem;
+  color: #8a8a8a;
+  font-style: italic;
+}
+
+/* ===== Install Block ===== */
+.install-block {
+  margin-top: 2.5rem;
+  max-width: 540px;
+  margin-left: auto;
+  margin-right: auto;
+  background: #111111;
+  border: 1px solid #2a2a2a;
+  border-radius: 8px;
+}
+
+.install-tabs {
+  display: flex;
+  gap: 0;
+  padding: 0.75rem 1.25rem 0;
+  border-bottom: 1px solid #2a2a2a;
+}
+
+.install-tab {
+  background: none;
+  border: none;
+  color: #6a6a6a;
+  font-family: "SF Mono", "Fira Code", "Fira Mono", "Roboto Mono", monospace;
+  font-size: 0.8125rem;
+  padding: 0.5rem 0.75rem 0.625rem;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: color 0.2s, border-color 0.2s;
+  margin-bottom: -1px;
+}
+
+.install-tab:hover {
+  color: #c0c0c0;
+}
+
+.install-tab.active {
+  color: #ffffff;
+  border-bottom-color: #ffffff;
+}
+
+.install-panel {
+  display: none;
+  padding: 1.25rem 1.25rem;
+  text-align: left;
+  overflow-x: auto;
+}
+
+.install-panel.active {
+  display: block;
+}
+
+.install-panel code {
+  font-size: 0.875rem;
+  color: #e0e0e0;
+  white-space: nowrap;
+}
+
+.install-text {
+  font-size: 0.875rem;
+  color: #8a8a8a;
+}
+
+.install-text code {
+  background: #1a1a1a;
+  padding: 0.1em 0.35em;
+  border-radius: 3px;
+}
+
+.install-link {
+  color: #e0e0e0;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  font-size: 0.875rem;
+  margin-left: 0.25rem;
+}
+
+.install-link:hover {
+  color: #ffffff;
+}
+
+/* ===== Features ===== */
+.features {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 4rem 1.5rem;
+}
+
+.features h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+  color: #ffffff;
+}
+
+.features-intro {
+  color: #8a8a8a;
+  margin-bottom: 2rem;
+  line-height: 1.7;
+}
+
+.feature-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.feature-list li {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+}
+
+.feature-marker {
+  font-family: "SF Mono", "Fira Code", "Fira Mono", "Roboto Mono", monospace;
+  color: #5a5a5a;
+  font-size: 0.875rem;
+  flex-shrink: 0;
+}
+
+.feature-title {
+  font-weight: 600;
+  color: #e0e0e0;
+  white-space: nowrap;
+}
+
+.feature-desc {
+  color: #6a6a6a;
+}
+
+/* ===== Highlights ===== */
+.highlights {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 4rem;
+}
+
+.highlights-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+}
+
+.highlight-card {
+  border: 1px solid #1a1a1a;
+  border-radius: 8px;
+  padding: 1.25rem 1rem;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.highlight-icon {
+  font-family: "SF Mono", "Fira Code", "Fira Mono", "Roboto Mono", monospace;
+  font-size: 1.25rem;
+  color: #5a5a5a;
+}
+
+.highlight-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #e0e0e0;
+}
+
+.highlight-desc {
+  font-size: 0.75rem;
+  color: #5a5a5a;
+}
+
+/* ===== Story ===== */
+.story {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 4rem 1.5rem;
+}
+
+.story h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #ffffff;
+  margin-bottom: 1rem;
+}
+
+.story-body {
+  font-size: 1.0625rem;
+  color: #8a8a8a;
+  line-height: 1.8;
+  max-width: 600px;
+}
+
+.story-aside {
+  margin-top: 1.25rem;
+  font-family: "SF Mono", "Fira Code", "Fira Mono", "Roboto Mono", monospace;
+  font-size: 0.75rem;
+  color: #4a4a4a;
+}
+
+/* ===== Footer ===== */
+.footer {
+  border-top: 1px solid #1a1a1a;
+  padding: 1.25rem 1.5rem;
+  margin-top: 2rem;
+}
+
+.footer-inner {
+  max-width: 960px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  font-size: 0.8125rem;
+}
+
+.footer-inner a {
+  color: #6a6a6a;
+}
+
+.footer-inner a:hover {
+  color: #ffffff;
+}
+
+.footer-copy {
+  color: #4a4a4a;
+}
+
+.footer-sep {
+  width: 1px;
+  height: 0.75rem;
+  background: #2a2a2a;
+}
+
+.footer-by {
+  color: #4a4a4a;
+}
+
+.footer-by a {
+  font-family: "SF Mono", "Fira Code", "Fira Mono", "Roboto Mono", monospace;
+}
+
+.footer-note {
+  color: #3a3a3a;
+  font-family: "SF Mono", "Fira Code", "Fira Mono", "Roboto Mono", monospace;
+}
+
+/* ===== Changelog ===== */
+.changelog-page {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 3rem 1.5rem;
+}
+
+.changelog-page > h1 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #ffffff;
+  margin-bottom: 2rem;
+}
+
+.changelog-back {
+  display: inline-block;
+  font-size: 0.875rem;
+  color: #6a6a6a;
+  margin-bottom: 2rem;
+}
+
+.changelog-back:hover {
+  color: #ffffff;
+}
+
+.changelog-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.changelog-entry {
+  display: grid;
+  grid-template-columns: 160px 1fr;
+  gap: 2.5rem;
+  padding: 2.5rem 0;
+  border-top: 1px solid #1a1a1a;
+}
+
+.changelog-entry:last-child {
+  border-bottom: 1px solid #1a1a1a;
+}
+
+.changelog-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding-top: 0.1rem;
+}
+
+.changelog-version {
+  font-family: "SF Mono", "Fira Code", "Fira Mono", "Roboto Mono", monospace;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.changelog-meta time {
+  font-family: "SF Mono", "Fira Code", "Fira Mono", "Roboto Mono", monospace;
+  font-size: 0.8125rem;
+  color: #5a5a5a;
+}
+
+.changelog-content h2 {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #e0e0e0;
+  margin: 0 0 0.5rem;
+}
+
+.changelog-content h2:not(:first-child) {
+  margin-top: 1.5rem;
+}
+
+.changelog-content h3 {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #c0c0c0;
+  margin: 1.25rem 0 0.375rem;
+}
+
+.changelog-content p {
+  color: #8a8a8a;
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  margin-bottom: 0.5rem;
+}
+
+.changelog-content ul {
+  list-style: none;
+  padding-left: 0;
+  color: #8a8a8a;
+  font-size: 0.9375rem;
+  line-height: 1.7;
+}
+
+.changelog-content li {
+  padding-left: 1rem;
+  position: relative;
+}
+
+.changelog-content li::before {
+  content: "-";
+  position: absolute;
+  left: 0;
+  color: #5a5a5a;
+}
+
+.changelog-content strong {
+  color: inherit;
+  font-weight: 600;
+}
+
+/* ===== Download ===== */
+.download-page {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 3rem 1.5rem;
+}
+
+.download-hero {
+  margin-bottom: 3rem;
+}
+
+.download-hero h1 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #ffffff;
+  margin-bottom: 0.375rem;
+}
+
+.download-desc {
+  color: #6a6a6a;
+  font-size: 0.9375rem;
+}
+
+.download-section {
+  margin-bottom: 3rem;
+}
+
+.download-section h2 {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #6a6a6a;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 1rem;
+}
+
+.download-terminal {
+  background: #111111;
+  border: 1px solid #1a1a1a;
+  border-radius: 6px;
+  padding: 0.75rem 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+}
+
+.download-terminal code {
+  font-size: 0.875rem;
+  color: #e0e0e0;
+}
+
+.download-version {
+  font-family: "SF Mono", "Fira Code", "Fira Mono", "Roboto Mono", monospace;
+  font-size: 0.8125rem;
+  color: #5a5a5a;
+  margin-bottom: 1rem;
+}
+
+.download-version strong {
+  color: #e0e0e0;
+}
+
+.download-table {
+  display: flex;
+  flex-direction: column;
+}
+
+.download-row {
+  display: flex;
+  align-items: center;
+  padding: 0.75rem 0;
+  border-top: 1px solid #1a1a1a;
+}
+
+.download-row:last-child {
+  border-bottom: 1px solid #1a1a1a;
+}
+
+.download-platform {
+  flex: 1;
+  font-size: 0.9375rem;
+  color: #e0e0e0;
+}
+
+.download-btn {
+  font-family: "SF Mono", "Fira Code", "Fira Mono", "Roboto Mono", monospace;
+  font-size: 0.8125rem;
+  color: #e0e0e0;
+  border: 1px solid #2a2a2a;
+  border-radius: 4px;
+  padding: 0.3rem 0.875rem;
+  transition: border-color 0.2s, color 0.2s;
+  flex-shrink: 0;
+}
+
+.download-btn:hover {
+  color: #ffffff;
+  border-color: #5a5a5a;
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 768px) {
+  .hero {
+    padding: 4rem 1rem 3rem;
+  }
+
+  .hero-logo {
+    font-size: 0.35rem;
+  }
+
+  .hero-tagline {
+    font-size: 1.1rem;
+  }
+
+  .highlights-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .feature-list li {
+    flex-wrap: wrap;
+  }
+
+  .feature-desc {
+    width: 100%;
+    padding-left: 2.75rem;
+  }
+
+  .changelog-entry {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+}
+
+@media (max-width: 480px) {
+  .hero-logo {
+    font-size: 0.25rem;
+  }
+
+  .highlights-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .navbar-inner {
+    padding: 0.75rem 1rem;
+  }
+
+  .navbar-links {
+    gap: 1rem;
+  }
+}

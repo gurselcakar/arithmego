@@ -1,0 +1,27 @@
+<section class="hero">
+  <pre class="hero-logo" aria-label="ArithmeGo">
+ █████╗ ██████╗ ██╗████████╗██╗  ██╗███╗   ███╗███████╗ ██████╗  ██████╗
+██╔══██╗██╔══██╗██║╚══██╔══╝██║  ██║████╗ ████║██╔════╝██╔════╝ ██╔═══██╗
+███████║██████╔╝██║   ██║   ███████║██╔████╔██║█████╗  ██║  ███╗██║   ██║
+██╔══██║██╔══██╗██║   ██║   ██╔══██║██║╚██╔╝██║██╔══╝  ██║   ██║██║   ██║
+██║  ██║██║  ██║██║   ██║   ██║  ██║██║ ╚═╝ ██║███████╗╚██████╔╝╚██████╔╝
+╚═╝  ╚═╝╚═╝  ╚═╝╚═╝   ╚═╝   ╚═╝  ╚═╝╚═╝     ╚═╝╚══════╝ ╚═════╝  ╚═════╝</pre>
+
+  <p class="hero-tagline">{{ .Params.tagline }}</p>
+
+  <div class="install-block">
+    <div class="install-tabs" role="tablist">
+      <button class="install-tab active" role="tab" aria-selected="true" data-tab="curl">macOS / Linux</button>
+      <button class="install-tab" role="tab" aria-selected="false" data-tab="windows">Windows</button>
+    </div>
+    <div class="install-panel active" data-panel="curl">
+      <code>{{ .Params.install.curl }}</code>
+    </div>
+    <div class="install-panel" data-panel="windows">
+      <span class="install-text">Download the latest <code>.zip</code> from</span>
+      <a href="{{ .Site.Params.github }}/releases" class="install-link" target="_blank" rel="noopener noreferrer">GitHub Releases</a>
+    </div>
+  </div>
+
+  <!-- Demo video will go here -->
+</section>

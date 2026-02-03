@@ -1,0 +1,11 @@
+<section class="highlights">
+  <div class="highlights-grid">
+    {{ range .Params.highlights }}
+    <div class="highlight-card">
+      <span class="highlight-icon">{{ .icon }}</span>
+      <span class="highlight-label">{{ .label }}</span>
+      <span class="highlight-desc">{{ .description }}</span>
+    </div>
+    {{ end }}
+  </div>
+</section>
