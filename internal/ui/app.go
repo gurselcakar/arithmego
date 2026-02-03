@@ -53,7 +53,8 @@ type App struct {
 	isFirstGame bool
 
 	// Update notification
-	updateInfo *update.Info
+	updateInfo         *update.Info
+	autoUpdateInstalled string // Version that was auto-updated (empty if none)
 }
 
 // New creates a new App instance with default start mode.
@@ -155,11 +156,25 @@ var Version = "dev"
 // CLIModeID is the mode ID specified via CLI, set before starting the TUI.
 var CLIModeID = ""
 
+// autoUpdateResultMsg carries the result of an auto-update attempt.
+type autoUpdateResultMsg struct {
+	version string
+	err     error
+}
+
 // checkForUpdateCmd returns a command that checks for updates.
 func checkForUpdateCmd() tea.Cmd {
 	return func() tea.Msg {
 		info, err := update.Check(Version)
 		return updateCheckResultMsg{info: info, err: err}
+	}
+}
+
+// autoUpdateCmd returns a command that downloads and applies an update.
+func autoUpdateCmd(version string) tea.Cmd {
+	return func() tea.Msg {
+		err := update.DownloadAndApply(version)
+		return autoUpdateResultMsg{version: version, err: err}
 	}
 }
 
@@ -185,8 +200,23 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if updateMsg, ok := msg.(updateCheckResultMsg); ok {
 		if updateMsg.err == nil && updateMsg.info != nil && updateMsg.info.UpdateAvailable {
 			a.updateInfo = updateMsg.info
-			// Update the menu model with the update info
-			a.menuModel.SetUpdateInfo(updateMsg.info.LatestVersion)
+			// Attempt auto-update in the background
+			return a, autoUpdateCmd(updateMsg.info.LatestVersion)
+		}
+		return a, nil
+	}
+
+	// Handle auto-update result
+	if updateMsg, ok := msg.(autoUpdateResultMsg); ok {
+		if updateMsg.err == nil {
+			// Auto-update succeeded
+			a.autoUpdateInstalled = updateMsg.version
+			a.menuModel.SetUpdateInstalled(updateMsg.version)
+		} else {
+			// Auto-update failed, fall back to manual notification
+			if a.updateInfo != nil {
+				a.menuModel.SetUpdateInfo(a.updateInfo.LatestVersion)
+			}
 		}
 		return a, nil
 	}
@@ -680,6 +710,13 @@ func (a *App) saveLastPlayed() {
 func (a *App) rebuildMenu() {
 	a.menuModel = screens.NewMenu()
 	a.menuModel.SetSize(a.width, a.height)
+
+	// Re-apply update state
+	if a.autoUpdateInstalled != "" {
+		a.menuModel.SetUpdateInstalled(a.autoUpdateInstalled)
+	} else if a.updateInfo != nil && a.updateInfo.UpdateAvailable {
+		a.menuModel.SetUpdateInfo(a.updateInfo.LatestVersion)
+	}
 }
 
 // View renders the current screen.

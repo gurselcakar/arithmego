@@ -36,14 +36,15 @@ const (
 
 // MenuModel represents the main menu screen.
 type MenuModel struct {
-	items         []MenuItem
-	cursor        int
-	width         int
-	height        int
-	quitting      bool
-	updateVersion string // Available update version (empty if none)
-	viewport      viewport.Model
-	viewportReady bool
+	items            []MenuItem
+	cursor           int
+	width            int
+	height           int
+	quitting         bool
+	updateVersion    string // Available update version (empty if none)
+	updateInstalled  string // Auto-updated version awaiting restart (empty if none)
+	viewport         viewport.Model
+	viewportReady    bool
 }
 
 // NewMenu creates a new menu model.
@@ -163,7 +164,13 @@ func (m MenuModel) getHints() string {
 		{Key: "→", Action: "Select"},
 	})
 
-	// Update notification (if available)
+	// Auto-update installed notification (takes priority)
+	if m.updateInstalled != "" {
+		updateNotice := styles.Correct.Render("Updated to " + m.updateInstalled + " — restart to apply")
+		return lipgloss.JoinVertical(lipgloss.Center, hints, "", updateNotice)
+	}
+
+	// Manual update notification (fallback)
 	if m.updateVersion != "" {
 		updateNotice := styles.Dim.Render("Update available: " + m.updateVersion + " · run 'arithmego update'")
 		return lipgloss.JoinVertical(lipgloss.Center, hints, "", updateNotice)
@@ -222,11 +229,13 @@ func (m MenuModel) renderMenuContent() string {
 	separator := styles.Dim.Render(components.LogoSeparator())
 	tagline := components.Tagline()
 
-	// Menu items
-	var menuItems []string
+	// Split menu items into main (game) items and secondary items
+	var mainItems []string
+	var secondaryItems []string
+	isSecondary := false
 	for i, item := range m.items {
 		if item.IsSpacer {
-			menuItems = append(menuItems, "")
+			isSecondary = true
 			continue
 		}
 
@@ -236,16 +245,30 @@ func (m MenuModel) renderMenuContent() string {
 		} else {
 			line = "  " + styles.Unselected.Render(item.Label)
 		}
-		menuItems = append(menuItems, line)
-	}
-	// Find the widest menu line so all items align when centered
-	maxWidth := 0
-	for _, line := range menuItems {
-		if w := lipgloss.Width(line); w > maxWidth {
-			maxWidth = w
+		if isSecondary {
+			secondaryItems = append(secondaryItems, line)
+		} else {
+			mainItems = append(mainItems, line)
 		}
 	}
-	menu := lipgloss.NewStyle().Width(maxWidth).Render(strings.Join(menuItems, "\n"))
+
+	// Render main game items as a centered block
+	mainMaxWidth := 0
+	for _, line := range mainItems {
+		if w := lipgloss.Width(line); w > mainMaxWidth {
+			mainMaxWidth = w
+		}
+	}
+	mainMenu := lipgloss.NewStyle().Width(mainMaxWidth).Render(strings.Join(mainItems, "\n"))
+
+	// Render secondary items as a separate centered block
+	secMaxWidth := 0
+	for _, line := range secondaryItems {
+		if w := lipgloss.Width(line); w > secMaxWidth {
+			secMaxWidth = w
+		}
+	}
+	secondaryMenu := lipgloss.NewStyle().Width(secMaxWidth).Render(strings.Join(secondaryItems, "\n"))
 
 	// Build main content
 	content := lipgloss.JoinVertical(lipgloss.Center,
@@ -256,7 +279,9 @@ func (m MenuModel) renderMenuContent() string {
 		tagline,
 		"",
 		"",
-		menu,
+		mainMenu,
+		"",
+		secondaryMenu,
 	)
 
 	// Center both horizontally and vertically within viewport
@@ -269,4 +294,9 @@ func (m MenuModel) renderMenuContent() string {
 // SetUpdateInfo sets the available update version for display.
 func (m *MenuModel) SetUpdateInfo(version string) {
 	m.updateVersion = version
+}
+
+// SetUpdateInstalled sets the auto-updated version for display.
+func (m *MenuModel) SetUpdateInstalled(version string) {
+	m.updateInstalled = version
 }
