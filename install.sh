@@ -5,7 +5,6 @@ REPO="gurselcakar/arithmego"
 INSTALL_DIR="$HOME/.local/bin"
 
 # Colors
-GREEN='\033[0;32m'
 RED='\033[0;31m'
 YELLOW='\033[0;33m'
 DIM='\033[2m'
@@ -19,7 +18,7 @@ cleanup() {
 trap cleanup EXIT
 
 fail() {
-    printf "\n  ${RED}%s${NC}\n\n" "$1"
+    echo -e "\n  ${RED}$1${NC}\n"
     exit 1
 }
 
@@ -29,18 +28,21 @@ spin() {
     local msg=$2
     local frames=('+' '−' '×' '÷')
     local i=0
+    local ok=0
     tput civis 2>/dev/null || true
     while kill -0 "$pid" 2>/dev/null; do
-        printf "\r  ${DIM}%s${NC}  %s" "${frames[$i]}" "$msg"
+        printf "\r  %b%s%b  %s" "$DIM" "${frames[$i]}" "$NC" "$msg"
         i=$(( (i + 1) % ${#frames[@]} ))
         sleep 0.12
     done
-    wait "$pid" 2>/dev/null && local ok=1 || local ok=0
+    if wait "$pid" 2>/dev/null; then
+        ok=1
+    fi
     tput cnorm 2>/dev/null || true
     if [ "$ok" = "1" ]; then
         printf "\r\033[2K"
     else
-        printf "\r  ${RED}%s${NC}   \n" "$msg"
+        printf "\r  %b%s%b   \n" "$RED" "$msg" "$NC"
         return 1
     fi
 }
@@ -84,27 +86,27 @@ main() {
     mkdir -p "${INSTALL_DIR}"
     mv "${TMPDIR}/arithmego" "${INSTALL_DIR}/arithmego"
     chmod +x "${INSTALL_DIR}/arithmego"
-    printf "  ArithmeGo ${DIM}%s${NC}\n" "${VERSION}"
-    printf "  Installed to ${DIM}%s${NC}\n" "${INSTALL_DIR}"
+    echo -e "  ArithmeGo ${DIM}${VERSION}${NC}"
+    echo -e "  Installed to ${DIM}${INSTALL_DIR}${NC}"
 
     # PATH check
     if ! echo ":${PATH}:" | grep -q ":${INSTALL_DIR}:"; then
         echo ""
-        printf "  ${YELLOW}Add ~/.local/bin to your PATH:${NC}\n"
+        echo -e "  ${YELLOW}Add ~/.local/bin to your PATH:${NC}"
         echo ""
-        printf "     ${DIM}# bash${NC}\n"
-        printf "     echo 'export PATH=\"\$HOME/.local/bin:\$PATH\"' >> ~/.bashrc\n"
+        echo -e "     ${DIM}# bash${NC}"
+        echo "     echo 'export PATH=\"\$HOME/.local/bin:\$PATH\"' >> ~/.bashrc"
         echo ""
-        printf "     ${DIM}# zsh${NC}\n"
-        printf "     echo 'export PATH=\"\$HOME/.local/bin:\$PATH\"' >> ~/.zshrc\n"
+        echo -e "     ${DIM}# zsh${NC}"
+        echo "     echo 'export PATH=\"\$HOME/.local/bin:\$PATH\"' >> ~/.zshrc"
     fi
 
     echo ""
-    printf "  Run ${BOLD}arithmego${NC} to start playing!\n"
+    echo -e "  Run ${BOLD}arithmego${NC} to start playing!"
     echo ""
-    printf "  ${DIM}--${NC}\n"
-    printf "  ${DIM}Your AI is thinking. You should too.${NC}\n"
-    printf "  ${DIM}Built by Gürsel Çakar.${NC}\n"
+    echo -e "  ${DIM}--${NC}"
+    echo -e "  ${DIM}Your AI is thinking. You should too.${NC}"
+    echo -e "  ${DIM}Built by Gürsel Çakar.${NC}"
     echo ""
 }
 
