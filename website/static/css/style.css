@@ -560,6 +560,11 @@ code {
   color: #e0e0e0;
 }
 
+.download-coming-soon {
+  font-size: 0.875rem;
+  color: #5a5a5a;
+}
+
 .download-table {
   display: flex;
   flex-direction: column;

@@ -3,7 +3,6 @@ package update
 
 import (
 	"archive/tar"
-	"archive/zip"
 	"compress/gzip"
 	"encoding/json"
 	"fmt"
@@ -92,12 +91,7 @@ func DownloadAndApply(version string) error {
 	goos := runtime.GOOS
 	goarch := runtime.GOARCH
 
-	ext := "tar.gz"
-	if goos == "windows" {
-		ext = "zip"
-	}
-
-	url := fmt.Sprintf(githubDownloadURL, version, goos, goarch, ext)
+	url := fmt.Sprintf(githubDownloadURL, version, goos, goarch, "tar.gz")
 
 	archivePath, err := downloadArchive(url)
 	if err != nil {
@@ -105,7 +99,7 @@ func DownloadAndApply(version string) error {
 	}
 	defer os.Remove(archivePath)
 
-	binaryPath, err := extractBinary(archivePath, goos)
+	binaryPath, err := extractFromTarGz(archivePath)
 	if err != nil {
 		return fmt.Errorf("extract failed: %w", err)
 	}
@@ -145,14 +139,6 @@ func downloadArchive(url string) (string, error) {
 	return tmpFile.Name(), nil
 }
 
-// extractBinary extracts the arithmego binary from the archive to a temp file.
-func extractBinary(archivePath, goos string) (string, error) {
-	if goos == "windows" {
-		return extractFromZip(archivePath)
-	}
-	return extractFromTarGz(archivePath)
-}
-
 // extractFromTarGz extracts the arithmego binary from a tar.gz archive.
 func extractFromTarGz(archivePath string) (string, error) {
 	f, err := os.Open(archivePath)
@@ -184,29 +170,6 @@ func extractFromTarGz(archivePath string) (string, error) {
 	}
 
 	return "", fmt.Errorf("arithmego binary not found in archive")
-}
-
-// extractFromZip extracts the arithmego.exe binary from a zip archive.
-func extractFromZip(archivePath string) (string, error) {
-	r, err := zip.OpenReader(archivePath)
-	if err != nil {
-		return "", fmt.Errorf("failed to open zip: %w", err)
-	}
-	defer r.Close()
-
-	for _, f := range r.File {
-		name := filepath.Base(f.Name)
-		if name == "arithmego.exe" {
-			rc, err := f.Open()
-			if err != nil {
-				return "", err
-			}
-			defer rc.Close()
-			return writeToTemp(rc)
-		}
-	}
-
-	return "", fmt.Errorf("arithmego.exe not found in archive")
 }
 
 // writeToTemp writes from a reader to a temporary file with executable permissions.
@@ -241,15 +204,6 @@ func replaceBinary(newBinaryPath string) error {
 	currentPath, err = filepath.EvalSymlinks(currentPath)
 	if err != nil {
 		return fmt.Errorf("failed to resolve symlinks: %w", err)
-	}
-
-	// On Windows, rename the old binary first since it may be locked
-	if runtime.GOOS == "windows" {
-		oldPath := currentPath + ".old"
-		_ = os.Remove(oldPath) // clean up any previous .old file
-		if err := os.Rename(currentPath, oldPath); err != nil {
-			return fmt.Errorf("failed to rename old binary: %w", err)
-		}
 	}
 
 	// Try direct rename first (fastest, works when on same filesystem)

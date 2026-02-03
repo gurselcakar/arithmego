@@ -22,14 +22,7 @@
 
     <section class="download-section">
       <h2>Windows</h2>
-      <div class="download-table">
-        {{ range .Params.windows }}
-        <div class="download-row">
-          <span class="download-platform">{{ .label }}</span>
-          <a href="{{ $github }}/releases/download/v{{ $version }}/arithmego_windows_{{ .arch }}.zip" class="download-btn">Download</a>
-        </div>
-        {{ end }}
-      </div>
+      <p class="download-coming-soon">Coming soon.</p>
     </section>
   </main>
   {{ partial "footer.html" . }}

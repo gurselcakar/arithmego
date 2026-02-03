@@ -23,8 +23,6 @@
 curl -fsSL https://arithmego.com/install.sh | bash
 ```
 
-Windows: download the latest `.zip` from [Releases](https://github.com/gurselcakar/arithmego/releases).
-
 ## What is this?
 
 A terminal-based arithmetic game for developers.
@@ -36,7 +34,7 @@ A terminal-based arithmetic game for developers.
 - Practice Mode — no timer, no pressure, just math
 - Local statistics — see where you're improving
 - Terminal-native — lives where you already work
-- Cross-platform — macOS, Linux, and Windows
+- Cross-platform — macOS and Linux (Windows coming soon)
 
 ## Usage
 
