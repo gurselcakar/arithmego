@@ -403,6 +403,15 @@ func (m PlayBrowseModel) renderContent() string {
 		lines = append(lines, m.renderCategorizedModes()...)
 	}
 
+	// Vertically center content if it fits within viewport
+	contentHeight := len(lines)
+	viewportHeight := m.calculateViewportHeight()
+	if contentHeight < viewportHeight {
+		topPadding := (viewportHeight - contentHeight) / 2
+		paddingLines := make([]string, topPadding)
+		lines = append(paddingLines, lines...)
+	}
+
 	return strings.Join(lines, "\n")
 }
 
