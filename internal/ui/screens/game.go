@@ -13,9 +13,8 @@ import (
 	"github.com/gurselcakar/arithmego/internal/ui/styles"
 )
 
-// Feedback display durations
+// Display durations
 const (
-	feedbackDuration  = 1 * time.Second
 	deltaDisplayTime  = 1 * time.Second
 	milestoneShowTime = 2 * time.Second
 )
@@ -42,10 +41,6 @@ type GameModel struct {
 	// Input method
 	inputMethod components.InputMethod
 	choices     components.ChoicesModel
-
-	// Visual feedback state
-	feedback       string    // "correct", "incorrect", or ""
-	feedbackExpiry time.Time // when feedback should clear
 
 	// Scoring display state
 	tick            int       // for shimmer animation (increments each second)
@@ -155,11 +150,8 @@ func (m GameModel) Update(msg tea.Msg) (GameModel, tea.Cmd) {
 			}
 		}
 
-		// Clear expired feedback states
+		// Clear expired display states
 		now := time.Now()
-		if m.feedback != "" && now.After(m.feedbackExpiry) {
-			m.feedback = ""
-		}
 		if m.scoreDelta != 0 && now.After(m.deltaExpiry) {
 			m.scoreDelta = 0
 		}
@@ -240,8 +232,6 @@ func (m GameModel) Update(msg tea.Msg) (GameModel, tea.Cmd) {
 }
 
 // submitAnswer checks the current answer and moves to the next question.
-// Note: Input validation (numeric-only) is handled by the InputModel component.
-// The strconv check here is a safety net for edge cases (e.g., just "-").
 func (m GameModel) submitAnswer() (GameModel, tea.Cmd) {
 	val := m.input.Value()
 	if val == "" {
@@ -256,22 +246,14 @@ func (m GameModel) submitAnswer() (GameModel, tea.Cmd) {
 	return m.submitAnswerValue(answer)
 }
 
-// submitAnswerValue submits an answer and handles feedback/animation.
+// submitAnswerValue submits an answer and handles animation.
 // Used by both typing mode (via submitAnswer) and multiple choice mode.
 func (m GameModel) submitAnswerValue(answer int) (GameModel, tea.Cmd) {
-	correct := m.session.SubmitAnswer(answer)
+	_ = m.session.SubmitAnswer(answer)
 
 	// Reset input components
 	m.input.Reset()
 	m.choices.Reset()
-
-	// Set feedback
-	if correct {
-		m.feedback = "correct"
-	} else {
-		m.feedback = "incorrect"
-	}
-	m.feedbackExpiry = time.Now().Add(feedbackDuration)
 
 	// Set score delta for display and start animation
 	var cmd tea.Cmd
@@ -315,8 +297,6 @@ func (m GameModel) skipQuestion() (GameModel, tea.Cmd) {
 	m.session.Skip()
 	m.input.Reset()
 	m.choices.Reset()
-	m.feedback = ""
-	m.feedbackExpiry = time.Time{}
 	m.scoreDelta = 0
 	m.deltaExpiry = time.Time{}
 	// Sync animation state (skip doesn't change score, but stop any in-progress animation)
@@ -350,18 +330,12 @@ func (m GameModel) View() string {
 		question = components.RenderQuestion(m.session.Current.Display)
 	}
 
-	// Apply feedback styling to input area
+	// Input area
 	var inputView string
 	if m.inputMethod == components.InputMultipleChoice {
 		inputView = m.choices.View()
 	} else {
 		inputView = m.input.View()
-	}
-	switch m.feedback {
-	case "correct":
-		inputView = styles.Correct.Render(inputView)
-	case "incorrect":
-		inputView = styles.Incorrect.Render(inputView)
 	}
 
 	// Hints - differ based on input method

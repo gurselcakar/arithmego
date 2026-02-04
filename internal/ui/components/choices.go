@@ -42,6 +42,7 @@ func ParseInputMethod(s string) InputMethod {
 // ChoiceSelectedMsg is sent when a choice is selected.
 type ChoiceSelectedMsg struct {
 	Value int
+	Index int
 }
 
 // ChoicesModel handles multiple choice input.
@@ -50,6 +51,7 @@ type ChoicesModel struct {
 	correctIndex int
 	selected     int  // -1 = none, 0-3 = selected choice
 	focused      bool
+	errorIndex   int  // -1 = none, 0-3 = wrong choice (shown in red)
 }
 
 // NewChoices creates a new choices model.
@@ -59,6 +61,7 @@ func NewChoices() ChoicesModel {
 		correctIndex: 0,
 		selected:     -1,
 		focused:      true,
+		errorIndex:   -1,
 	}
 }
 
@@ -104,8 +107,9 @@ func (m ChoicesModel) Update(msg tea.Msg) (ChoicesModel, tea.Cmd) {
 
 // selectChoice returns a command that sends a ChoiceSelectedMsg.
 func (m ChoicesModel) selectChoice(index int) tea.Cmd {
+	value := m.choices[index]
 	return func() tea.Msg {
-		return ChoiceSelectedMsg{Value: m.choices[index]}
+		return ChoiceSelectedMsg{Value: value, Index: index}
 	}
 }
 
@@ -121,7 +125,10 @@ func (m ChoicesModel) View() string {
 		valueStr := strconv.Itoa(choice)
 
 		var style lipgloss.Style
-		if m.selected == i {
+		if m.errorIndex == i {
+			// Wrong choice - show in red
+			style = styles.Incorrect
+		} else if m.selected == i {
 			style = styles.Selected
 		} else if m.focused {
 			style = styles.Normal
@@ -161,9 +168,20 @@ func (m ChoicesModel) Value() string {
 	return ""
 }
 
-// Reset clears the selection.
+// Reset prepares for a new question.
 func (m *ChoicesModel) Reset() {
 	m.selected = -1
+	m.errorIndex = -1
+}
+
+// SetError marks a choice as incorrect (shown in red).
+func (m *ChoicesModel) SetError(index int) {
+	m.errorIndex = index
+}
+
+// ClearError removes the error marking.
+func (m *ChoicesModel) ClearError() {
+	m.errorIndex = -1
 }
 
 // SetChoices updates the available choices and correct index.

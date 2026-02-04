@@ -27,6 +27,12 @@ type Config struct {
 	LastPlayedDifficulty string `json:"last_played_difficulty,omitempty"`
 	LastPlayedDurationMs int64  `json:"last_played_duration_ms,omitempty"`
 
+	// Practice mode state (auto-saved when exiting practice)
+	PracticeCategory    string `json:"practice_category,omitempty"`
+	PracticeOperation   string `json:"practice_operation,omitempty"`
+	PracticeDifficulty  string `json:"practice_difficulty,omitempty"`
+	PracticeInputMethod string `json:"practice_input_method,omitempty"`
+
 	// Preferences
 	AutoUpdate           bool   `json:"auto_update"`
 	InputMethod          string `json:"input_method,omitempty"` // "typing" or "multiple_choice"

@@ -70,9 +70,20 @@ func NewWithStartMode(startMode StartMode) *App {
 		config = storage.NewConfig()
 	}
 
+	// Load practice settings from config
+	var practiceSettings *screens.PracticeSettings
+	if config.PracticeCategory != "" {
+		practiceSettings = &screens.PracticeSettings{
+			Category:    config.PracticeCategory,
+			Operation:   config.PracticeOperation,
+			Difficulty:  config.PracticeDifficulty,
+			InputMethod: config.PracticeInputMethod,
+		}
+	}
+
 	app := &App{
 		menuModel:       screens.NewMenu(),
-		practiceModel:   screens.NewPractice(),
+		practiceModel:   screens.NewPracticeWithSettings(practiceSettings),
 		statisticsModel: screens.NewStatistics(),
 		settingsModel:   screens.NewSettings(config),
 		onboardingModel: screens.NewOnboarding(),
@@ -272,7 +283,17 @@ func (a *App) updateMenu(msg tea.Msg) (tea.Model, tea.Cmd) {
 			a.screen = ScreenPlayBrowse
 			return a, a.playBrowseModel.Init()
 		case screens.ActionPractice:
-			a.practiceModel = screens.NewPractice()
+			// Load practice settings from config
+			var practiceSettings *screens.PracticeSettings
+			if a.config.PracticeCategory != "" {
+				practiceSettings = &screens.PracticeSettings{
+					Category:    a.config.PracticeCategory,
+					Operation:   a.config.PracticeOperation,
+					Difficulty:  a.config.PracticeDifficulty,
+					InputMethod: a.config.PracticeInputMethod,
+				}
+			}
+			a.practiceModel = screens.NewPracticeWithSettings(practiceSettings)
 			a.practiceModel.SetSize(a.width, a.height)
 			a.screen = ScreenPractice
 			return a, a.practiceModel.Init()
@@ -481,10 +502,22 @@ func (a *App) updatePractice(msg tea.Msg) (tea.Model, tea.Cmd) {
 	a.practiceModel, cmd = a.practiceModel.Update(msg)
 
 	if _, ok := msg.(screens.ReturnToMenuMsg); ok {
+		// Save practice settings before returning to menu
+		a.savePracticeSettings()
 		return a.returnToMenu()
 	}
 
 	return a, cmd
+}
+
+// savePracticeSettings saves the current practice settings to config.
+func (a *App) savePracticeSettings() {
+	settings := a.practiceModel.Settings()
+	a.config.PracticeCategory = settings.Category
+	a.config.PracticeOperation = settings.Operation
+	a.config.PracticeDifficulty = settings.Difficulty
+	a.config.PracticeInputMethod = settings.InputMethod
+	_ = storage.SaveConfig(a.config) // Ignore save errors for non-critical data
 }
 
 // updateStatistics handles statistics screen updates.
