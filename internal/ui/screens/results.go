@@ -147,7 +147,7 @@ func (m ResultsModel) View() string {
 	} else {
 		hints = components.RenderHintsStructured([]components.Hint{
 			{Key: "M", Action: "Menu"},
-			{Key: "↵", Action: "Play Again"},
+			{Key: "↵", Action: "Play"},
 		})
 	}
 
