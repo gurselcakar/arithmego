@@ -95,40 +95,50 @@ func RenderLineChart(points []analytics.TrendPoint, metric analytics.TrendMetric
 		grid[y][x] = []rune(ChartPoint)[0]
 	}
 
+	// Pre-compute Y-axis labels to determine max width
+	yLabels := make([]string, height)
+	for row := 0; row < height; row++ {
+		yVal := maxVal - float64(row)*(maxVal-minVal)/float64(height-1)
+		switch metric {
+		case analytics.TrendMetricAccuracy:
+			yLabels[row] = fmt.Sprintf("%.0f%%", yVal)
+		case analytics.TrendMetricSessions:
+			yLabels[row] = fmt.Sprintf("%.0f", yVal)
+		case analytics.TrendMetricScore:
+			yLabels[row] = fmt.Sprintf("%.0f", yVal)
+		case analytics.TrendMetricResponseTime:
+			yLabels[row] = fmt.Sprintf("%.1fs", yVal)
+		default:
+			yLabels[row] = fmt.Sprintf("%.0f", yVal)
+		}
+	}
+	maxLabelWidth := 0
+	for _, l := range yLabels {
+		if len(l) > maxLabelWidth {
+			maxLabelWidth = len(l)
+		}
+	}
+
 	// Build output with Y-axis labels
 	var b strings.Builder
 
 	for row := 0; row < height; row++ {
-		// Y-axis label
-		yVal := maxVal - float64(row)*(maxVal-minVal)/float64(height-1)
-		var label string
-		switch metric {
-		case analytics.TrendMetricAccuracy:
-			label = fmt.Sprintf("%3.0f%% │", yVal)
-		case analytics.TrendMetricSessions:
-			label = fmt.Sprintf("%3.0f │", yVal)
-		case analytics.TrendMetricScore:
-			label = fmt.Sprintf("%4.0f │", yVal)
-		case analytics.TrendMetricResponseTime:
-			label = fmt.Sprintf("%.1fs │", yVal)
-		default:
-			label = fmt.Sprintf("%4.0f │", yVal)
-		}
-
+		label := fmt.Sprintf("%*s │", maxLabelWidth, yLabels[row])
 		b.WriteString(styles.Dim.Render(label))
 		b.WriteString(string(grid[row]))
 		b.WriteString("\n")
 	}
 
-	// X-axis
-	b.WriteString(styles.Dim.Render("     └" + strings.Repeat("─", width)))
+	// X-axis (align └ with │)
+	axisPrefix := strings.Repeat(" ", maxLabelWidth+1) + "└"
+	b.WriteString(styles.Dim.Render(axisPrefix + strings.Repeat("─", width)))
 	b.WriteString("\n")
 
 	// X-axis labels (start and end dates)
 	if len(points) > 0 {
 		startDate := points[0].Date.Format("Jan 2")
 		endDate := points[len(points)-1].Date.Format("Jan 2")
-		labelLine := "      " + startDate
+		labelLine := strings.Repeat(" ", maxLabelWidth+2) + startDate
 		padding := width - len(startDate) - len(endDate)
 		if padding > 0 {
 			labelLine += strings.Repeat(" ", padding) + endDate
