@@ -491,9 +491,13 @@ func (m PracticeModel) viewPractice() string {
 	)
 
 	// Hints - include settings shortcuts
+	hintsWidth := m.width
+	if hintsWidth == 0 {
+		hintsWidth = 80
+	}
 	var hints string
 	if m.inputMethod == components.InputMultipleChoice {
-		hints = components.RenderHintsStructured([]components.Hint{
+		hints = components.RenderHintsResponsive([]components.Hint{
 			{Key: "C", Action: "Category"},
 			{Key: "O", Action: "Operation"},
 			{Key: "D", Action: "Difficulty"},
@@ -501,16 +505,16 @@ func (m PracticeModel) viewPractice() string {
 			{Key: "1-4", Action: "Answer"},
 			{Key: "S", Action: "Skip"},
 			{Key: "Q", Action: "Quit"},
-		})
+		}, hintsWidth)
 	} else {
-		hints = components.RenderHintsStructured([]components.Hint{
+		hints = components.RenderHintsResponsive([]components.Hint{
 			{Key: "C", Action: "Category"},
 			{Key: "O", Action: "Operation"},
 			{Key: "D", Action: "Difficulty"},
 			{Key: "M", Action: "Input"},
 			{Key: "S", Action: "Skip"},
 			{Key: "Q", Action: "Quit"},
-		})
+		}, hintsWidth)
 	}
 
 	// Layout with header at top, content centered, hints at bottom
