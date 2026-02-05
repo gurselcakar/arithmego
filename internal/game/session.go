@@ -112,7 +112,12 @@ func (s *Session) SubmitAnswer(answer int) bool {
 	} else {
 		s.Incorrect++
 		scoreResult := CalculateWrongAnswer()
+		prevScore := s.Score
 		s.Score += scoreResult.Points
+		if s.Score < 0 {
+			s.Score = 0
+		}
+		scoreResult.Points = s.Score - prevScore
 		s.Streak = 0
 		s.LastResult = &scoreResult
 		points = scoreResult.Points

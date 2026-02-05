@@ -366,8 +366,11 @@ func (m GameModel) View() string {
 	if m.width > 0 && m.height > 0 {
 		hintsHeight := lipgloss.Height(hints)
 		bottomPadding := 1
+		topPadding := 2
 		topRowHeight := lipgloss.Height(topRow)
-		availableHeight := m.height - topRowHeight - hintsHeight - bottomPadding
+		availableHeight := m.height - topPadding - topRowHeight - hintsHeight - bottomPadding
+
+		topRow = strings.Repeat("\n", topPadding) + topRow
 
 		centeredQuestion := lipgloss.Place(m.width, availableHeight, lipgloss.Center, lipgloss.Center, centerContent)
 		centeredHints := lipgloss.Place(m.width, hintsHeight+bottomPadding, lipgloss.Center, lipgloss.Top, hints)
@@ -396,10 +399,13 @@ func (m GameModel) View() string {
 
 // renderTopRow renders the top status bar with scoreboard, score, and timer.
 func (m GameModel) renderTopRow() string {
-	if m.width == 0 {
-		// Fallback for unknown width
+	if m.width < 40 {
+		// Fallback for unknown or very narrow width
 		return m.renderTopRowSimple()
 	}
+
+	// Horizontal margin to keep HUD content away from terminal edges
+	const margin = 4
 
 	// Left: Scoreboard (multiplier + streak bar)
 	scoreboard := components.RenderScoreboard(m.session.Streak, m.tick)
@@ -410,21 +416,23 @@ func (m GameModel) renderTopRow() string {
 	// Right: Timer with "remaining" label
 	timer := components.FormatTimer(m.session.TimeLeft)
 	timerWithLabel := lipgloss.JoinVertical(lipgloss.Right,
+		styles.Dim.Render("Remaining"),
 		timer,
-		styles.Dim.Render("remaining"),
 	)
 
-	// Calculate column widths
-	leftWidth := m.width / 4
-	rightWidth := m.width / 4
-	centerWidth := m.width - leftWidth - rightWidth
+	// Calculate column widths from usable area (excluding margins)
+	hudWidth := m.width - 2*margin
+	leftWidth := hudWidth / 4
+	rightWidth := hudWidth / 4
+	centerWidth := hudWidth - leftWidth - rightWidth
 
 	// Style each column
 	leftCol := lipgloss.NewStyle().Width(leftWidth).Align(lipgloss.Left).Render(scoreboard)
 	centerCol := lipgloss.NewStyle().Width(centerWidth).Align(lipgloss.Center).Render(scoreDisplay)
 	rightCol := lipgloss.NewStyle().Width(rightWidth).Align(lipgloss.Right).Render(timerWithLabel)
 
-	return lipgloss.JoinHorizontal(lipgloss.Top, leftCol, centerCol, rightCol)
+	row := lipgloss.JoinHorizontal(lipgloss.Top, leftCol, centerCol, rightCol)
+	return lipgloss.NewStyle().PaddingLeft(margin).Render(row)
 }
 
 // renderTopRowSimple renders a simpler top row when width is unknown.
@@ -447,7 +455,7 @@ func (m GameModel) renderTopRowSimple() string {
 	)
 }
 
-// renderScoreWithDelta renders the score with milestone and delta popup above it.
+// renderScoreWithDelta renders the score with label, delta popup, and score number.
 func (m GameModel) renderScoreWithDelta() string {
 	// During animation, show the animating displayScore.
 	// When not animating, displayScore should equal session.Score.
@@ -459,15 +467,18 @@ func (m GameModel) renderScoreWithDelta() string {
 	}
 	score := components.RenderScoreLarge(scoreValue)
 
-	// Build the display from top to bottom: milestone, delta, score
+	// Build the display from top to bottom: label/milestone, score, delta
 	var parts []string
 
-	// Milestone (if active) - shows multiplier like "×1.25" or "×2.0 MAX"
+	// Top line: milestone replaces "Score" label when active
 	if m.milestone != "" {
 		parts = append(parts, styles.Milestone.Render(m.milestone))
 	} else {
-		parts = append(parts, "") // empty line for consistent height
+		parts = append(parts, styles.Dim.Render("Score"))
 	}
+
+	// Score number
+	parts = append(parts, score)
 
 	// Delta popup (+150 or -25)
 	if m.scoreDelta != 0 {
@@ -475,9 +486,6 @@ func (m GameModel) renderScoreWithDelta() string {
 	} else {
 		parts = append(parts, "") // empty line for consistent height
 	}
-
-	// Score
-	parts = append(parts, score)
 
 	return lipgloss.JoinVertical(lipgloss.Center, parts...)
 }

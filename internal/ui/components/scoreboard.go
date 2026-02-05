@@ -18,7 +18,6 @@ const (
 var (
 	emptyChar    = "░"
 	filledChar   = "█"
-	blazingChar  = "▓"
 	legendaryBar = "◆◆◆◆◆◆◆◆◆◆"
 )
 
@@ -29,74 +28,55 @@ func RenderMultiplier(multiplier float64) string {
 	return styles.Multiplier.Render(text)
 }
 
-// RenderStreakBar renders a progress bar that evolves based on streak tier.
-// The bar transforms visually as the player maintains higher streaks:
-// - TierNone (0): empty bar
-// - TierBuilding (1-4): filling bar, dim
-// - TierStreak (5-9): filling bar, bright
-// - TierMax (10-14): full bar with count
-// - TierBlazing (15-19): shimmer animation
-// - TierUnstoppable (20-24): different brackets, shimmer
-// - TierLegendary (25+): diamond pattern, final form
-// The tick parameter drives the shimmer animation for higher tiers.
+// RenderStreakBar renders a progress bar showing progress toward the next tier.
+// The bar fills within each tier (5 streaks = full bar), then resets when a
+// new multiplier milestone is reached. Styling upgrades with each tier:
+// - TierNone (0): empty bar, dim
+// - TierBuilding (1-4): filling, white
+// - TierStreak (5-9): filling, green
+// - TierMax (10-14): filling, bold green
+// - TierBlazing (15-19): filling, bold yellow
+// - TierUnstoppable (20-24): filling, bold magenta, «» brackets
+// - TierLegendary (25+): full diamond bar, final form
 func RenderStreakBar(streak int, tick int) string {
 	tier := game.GetStreakTier(streak)
 
-	switch tier {
-	case game.TierNone:
-		// Empty bar
+	if tier == game.TierNone {
 		return styles.StreakNone.Render("[" + strings.Repeat(emptyChar, streakBarWidth) + "]")
+	}
 
+	if tier == game.TierLegendary {
+		return styles.StreakLegendary.Render("<" + legendaryBar + ">")
+	}
+
+	// Progress within current tier: each tier spans 5 streaks, bar has 10 slots
+	// so each correct answer fills 2 segments
+	progress := streak % game.StreakMilestoneSize
+	filled := progress * (streakBarWidth / game.StreakMilestoneSize)
+	empty := streakBarWidth - filled
+	bar := strings.Repeat(filledChar, filled) + strings.Repeat(emptyChar, empty)
+
+	open, close := "[", "]"
+	var style lipgloss.Style
+	switch tier {
 	case game.TierBuilding:
-		// 1-4: filling up, dim
-		filled := streak
-		empty := streakBarWidth - filled
-		bar := strings.Repeat(filledChar, filled) + strings.Repeat(emptyChar, empty)
-		return styles.StreakBuilding.Render("[" + bar + "]")
-
+		style = styles.StreakBuilding
 	case game.TierStreak:
-		// 5-9: filling up, bright green
-		filled := streak
-		empty := streakBarWidth - filled
-		bar := strings.Repeat(filledChar, filled) + strings.Repeat(emptyChar, empty)
-		return styles.StreakActive.Render("[" + bar + "]")
-
+		style = styles.StreakActive
 	case game.TierMax:
-		// 10-14: full bar with streak count
-		bar := strings.Repeat(filledChar, streakBarWidth)
-		return styles.StreakMax.Render("["+bar+"]") + styles.Dim.Render(fmt.Sprintf(" %d", streak))
-
+		style = styles.StreakMax
 	case game.TierBlazing:
-		// 15-19: transformed bar with shimmer
-		bar := renderShimmerBar(tick, blazingChar, filledChar)
-		return styles.StreakBlazing.Render("["+bar+"]") + styles.Dim.Render(fmt.Sprintf(" %d", streak))
-
+		style = styles.StreakBlazing
 	case game.TierUnstoppable:
-		// 20-24: another transformation
-		bar := renderShimmerBar(tick, blazingChar, filledChar)
-		return styles.StreakUnstoppable.Render("«"+bar+"»") + styles.Dim.Render(fmt.Sprintf(" %d", streak))
-
-	case game.TierLegendary:
-		// 25+: final form
-		return styles.StreakLegendary.Render("<"+legendaryBar+">") + styles.Dim.Render(fmt.Sprintf(" %d", streak))
-
+		style = styles.StreakUnstoppable
+		open, close = "«", "»"
 	default:
-		return ""
+		style = styles.StreakNone
 	}
+
+	return style.Render(open + bar + close)
 }
 
-// renderShimmerBar creates alternating pattern for shimmer effect
-func renderShimmerBar(tick int, char1, char2 string) string {
-	var bar strings.Builder
-	for i := 0; i < streakBarWidth; i++ {
-		if (i+tick)%2 == 0 {
-			bar.WriteString(char1)
-		} else {
-			bar.WriteString(char2)
-		}
-	}
-	return bar.String()
-}
 
 // RenderScore renders the score with comma formatting (e.g., "1,234").
 func RenderScore(score int) string {
@@ -137,6 +117,9 @@ func RenderScoreboard(streak int, tick int) string {
 	multiplier := game.StreakBonus(streak)
 
 	mult := RenderMultiplier(multiplier)
+	if streak > 0 {
+		mult += styles.Dim.Render(" · ") + styles.Multiplier.Render(fmt.Sprintf("Streak %d", streak))
+	}
 	bar := RenderStreakBar(streak, tick)
 
 	return lipgloss.JoinVertical(lipgloss.Left, mult, bar)
