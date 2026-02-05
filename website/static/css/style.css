@@ -220,6 +220,18 @@ code {
   color: #ffffff;
 }
 
+/* ===== Section Separator ===== */
+.section-sep {
+  display: flex;
+  justify-content: center;
+  gap: 1.5rem;
+  padding: 0.5rem 0;
+  font-size: 1rem;
+  color: #2a2a2a;
+  font-family: "SF Mono", "Fira Code", "Fira Mono", "Roboto Mono", monospace;
+  letter-spacing: 0.1em;
+}
+
 /* ===== Features ===== */
 .features {
   max-width: 720px;
