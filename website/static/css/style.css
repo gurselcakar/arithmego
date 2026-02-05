@@ -162,7 +162,7 @@ code {
   display: none;
   padding: 1.25rem 1.25rem;
   text-align: left;
-  overflow-x: auto;
+  overflow: hidden;
   align-items: center;
   gap: 0.75rem;
 }
@@ -175,6 +175,9 @@ code {
   font-size: 0.875rem;
   color: #e0e0e0;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 
 /* ===== Copy Button ===== */
@@ -545,7 +548,9 @@ code {
 .download-terminal code {
   font-size: 0.875rem;
   color: #e0e0e0;
-  overflow-x: auto;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   min-width: 0;
 }
 
