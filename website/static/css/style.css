@@ -640,6 +640,15 @@ code {
     gap: 1rem;
   }
 
+  .footer-inner {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .footer-sep {
+    display: none;
+  }
+
 }
 
 @media (max-width: 480px) {
