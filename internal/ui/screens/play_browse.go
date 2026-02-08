@@ -32,6 +32,7 @@ var categoryModes = map[string][]string{
 // Layout constants
 const (
 	playBrowseHintsHeight = 3
+	titleHeight           = 2 // title line + blank line
 )
 
 // PlayBrowseModel represents the Mode Browser screen (Step 1 of play flow).
@@ -44,10 +45,6 @@ type PlayBrowseModel struct {
 
 	modes  []*modes.Mode // All modes
 	cursor int           // Selected mode index (into modes slice)
-
-	searchQuery   string
-	searchFocused bool
-	filteredModes []*modes.Mode // Modes after filter (nil = show all)
 
 	lastPlayedModeID string
 	config           *storage.Config
@@ -91,73 +88,17 @@ func (m PlayBrowseModel) Update(msg tea.Msg) (PlayBrowseModel, tea.Cmd) {
 		return m, nil
 
 	case tea.KeyMsg:
-		if m.searchFocused {
-			return m.updateSearchInput(msg)
-		}
 		return m.updateNavigation(msg)
 	}
 
 	return m, nil
 }
 
-// updateSearchInput handles input when search is focused.
-func (m PlayBrowseModel) updateSearchInput(msg tea.KeyMsg) (PlayBrowseModel, tea.Cmd) {
-	switch msg.String() {
-	case "esc":
-		// Clear search and exit search mode
-		m.searchFocused = false
-		m.searchQuery = ""
-		m.filteredModes = nil
-		m.updateViewportContent()
-		return m, nil
-
-	case "enter":
-		// Exit search mode, keep filter
-		m.searchFocused = false
-		m.updateViewportContent()
-		return m, nil
-
-	case "backspace":
-		if len(m.searchQuery) > 0 {
-			m.searchQuery = m.searchQuery[:len(m.searchQuery)-1]
-			m.applyFilter()
-			m.updateViewportContent()
-		}
-		return m, nil
-
-	case "up", "down":
-		// Allow navigation while in search mode
-		m.searchFocused = false
-		return m.updateNavigation(msg)
-
-	default:
-		// Add character to search
-		if len(msg.String()) == 1 {
-			m.searchQuery += msg.String()
-			m.applyFilter()
-			m.updateViewportContent()
-		}
-		return m, nil
-	}
-}
-
 // updateNavigation handles navigation input.
 func (m PlayBrowseModel) updateNavigation(msg tea.KeyMsg) (PlayBrowseModel, tea.Cmd) {
 	switch msg.String() {
 	case "esc":
-		// If search query exists, clear it first
-		if m.searchQuery != "" {
-			m.searchQuery = ""
-			m.filteredModes = nil
-			m.updateViewportContent()
-			return m, nil
-		}
 		return m, func() tea.Msg { return ReturnToMenuMsg{} }
-
-	case "/":
-		m.searchFocused = true
-		m.updateViewportContent()
-		return m, nil
 
 	case "up", "k":
 		m.moveCursor(-1)
@@ -184,8 +125,7 @@ func (m PlayBrowseModel) updateNavigation(msg tea.KeyMsg) (PlayBrowseModel, tea.
 
 // moveCursor moves the cursor by delta, skipping category headers.
 func (m *PlayBrowseModel) moveCursor(delta int) {
-	modeList := m.getDisplayModes()
-	if len(modeList) == 0 {
+	if len(m.modes) == 0 {
 		return
 	}
 
@@ -193,53 +133,18 @@ func (m *PlayBrowseModel) moveCursor(delta int) {
 	if newCursor < 0 {
 		newCursor = 0
 	}
-	if newCursor >= len(modeList) {
-		newCursor = len(modeList) - 1
+	if newCursor >= len(m.modes) {
+		newCursor = len(m.modes) - 1
 	}
 	m.cursor = newCursor
 }
 
 // selectedMode returns the currently selected mode.
 func (m PlayBrowseModel) selectedMode() *modes.Mode {
-	modeList := m.getDisplayModes()
-	if m.cursor >= 0 && m.cursor < len(modeList) {
-		return modeList[m.cursor]
+	if m.cursor >= 0 && m.cursor < len(m.modes) {
+		return m.modes[m.cursor]
 	}
 	return nil
-}
-
-// getDisplayModes returns the modes to display (filtered or all).
-func (m PlayBrowseModel) getDisplayModes() []*modes.Mode {
-	if m.filteredModes != nil {
-		return m.filteredModes
-	}
-	return m.modes
-}
-
-// applyFilter filters modes based on search query.
-func (m *PlayBrowseModel) applyFilter() {
-	if m.searchQuery == "" {
-		m.filteredModes = nil
-		return
-	}
-
-	query := strings.ToLower(m.searchQuery)
-	var filtered []*modes.Mode
-
-	for _, mode := range m.modes {
-		nameLower := strings.ToLower(mode.Name)
-		descLower := strings.ToLower(mode.Description)
-		if strings.Contains(nameLower, query) || strings.Contains(descLower, query) {
-			filtered = append(filtered, mode)
-		}
-	}
-
-	m.filteredModes = filtered
-
-	// Reset cursor if out of bounds
-	if m.cursor >= len(filtered) {
-		m.cursor = 0
-	}
 }
 
 // scrollToSelection adjusts viewport to keep selection visible.
@@ -250,36 +155,28 @@ func (m *PlayBrowseModel) scrollToSelection() {
 
 	// Calculate approximate line number of selection
 	// Each category header takes 2 lines, each mode takes 1 line
-	modeList := m.getDisplayModes()
-	if len(modeList) == 0 {
+	if len(m.modes) == 0 {
 		return
 	}
 
 	// Find the line number of the selected mode
-	lineNum := 3 // Title + blank line + search
+	lineNum := 0
 
-	if m.filteredModes == nil {
-		// With categories
-		for _, catName := range categoryOrder {
-			modeIDs := categoryModes[catName]
-			lineNum += 2 // Category header + blank line
+	for _, catName := range categoryOrder {
+		modeIDs := categoryModes[catName]
+		lineNum += 2 // Category header + blank line
 
-			for _, modeID := range modeIDs {
-				for i, mode := range modeList {
-					if mode.ID == modeID && i == m.cursor {
-						goto found
-					}
-					if mode.ID == modeID {
-						lineNum++
-					}
+		for _, modeID := range modeIDs {
+			for i, mode := range m.modes {
+				if mode.ID == modeID && i == m.cursor {
+					goto found
+				}
+				if mode.ID == modeID {
+					lineNum++
 				}
 			}
-			lineNum++ // Blank line after category
 		}
-	} else {
-		// Without categories (filtered)
-		lineNum += 2 // Search results header
-		lineNum += m.cursor
+		lineNum++ // Blank line after category
 	}
 
 found:
@@ -298,8 +195,11 @@ func (m PlayBrowseModel) View() string {
 	}
 
 	hints := m.getHints()
+	title := lipgloss.Place(m.width, 1, lipgloss.Center, lipgloss.Center, styles.Logo.Render("PLAY"))
 
 	return lipgloss.JoinVertical(lipgloss.Left,
+		title,
+		"",
 		m.viewport.View(),
 		lipgloss.Place(m.width, playBrowseHintsHeight, lipgloss.Center, lipgloss.Center, hints),
 	)
@@ -307,17 +207,9 @@ func (m PlayBrowseModel) View() string {
 
 // getHints returns the context-aware hints.
 func (m PlayBrowseModel) getHints() string {
-	if m.searchFocused {
-		return components.RenderHintsStructured([]components.Hint{
-			{Key: "Esc", Action: "Cancel"},
-			{Key: "Enter", Action: "Apply"},
-			{Key: "↑↓", Action: "Navigate"},
-		})
-	}
 	return components.RenderHintsStructured([]components.Hint{
 		{Key: "Esc", Action: "Back"},
 		{Key: "↑↓", Action: "Navigate"},
-		{Key: "/", Action: "Search"},
 		{Key: "→", Action: "Select"},
 	})
 }
@@ -358,7 +250,7 @@ func (m *PlayBrowseModel) SetSize(width, height int) {
 
 // calculateViewportHeight returns the viewport height.
 func (m PlayBrowseModel) calculateViewportHeight() int {
-	viewportHeight := m.height - playBrowseHintsHeight
+	viewportHeight := m.height - playBrowseHintsHeight - titleHeight
 	if viewportHeight < 1 {
 		viewportHeight = 1
 	}
@@ -379,70 +271,18 @@ func (m *PlayBrowseModel) updateViewportContent() {
 func (m PlayBrowseModel) renderContent() string {
 	var lines []string
 
-	// Title
-	title := styles.Logo.Render("PLAY")
-	lines = append(lines, lipgloss.Place(m.width, 1, lipgloss.Center, lipgloss.Center, title))
-	lines = append(lines, "")
-
-	// Search bar
-	searchBar := m.renderSearchBar()
-	lines = append(lines, lipgloss.Place(m.width, 1, lipgloss.Center, lipgloss.Center, searchBar))
-	lines = append(lines, "")
-
-	modeList := m.getDisplayModes()
-
-	if len(modeList) == 0 {
-		// No results
-		noResults := styles.Dim.Render("No modes match your search")
-		lines = append(lines, lipgloss.Place(m.width, 1, lipgloss.Center, lipgloss.Center, noResults))
-	} else if m.filteredModes != nil {
-		// Filtered results (no categories)
-		lines = append(lines, m.renderFilteredModes()...)
-	} else {
-		// All modes with categories
-		lines = append(lines, m.renderCategorizedModes()...)
-	}
-
-	// Vertically center content if it fits within viewport
-	contentHeight := len(lines)
-	viewportHeight := m.calculateViewportHeight()
-	if contentHeight < viewportHeight {
-		topPadding := (viewportHeight - contentHeight) / 2
-		paddingLines := make([]string, topPadding)
-		lines = append(paddingLines, lines...)
-	}
+	lines = append(lines, m.renderCategorizedModes()...)
 
 	return strings.Join(lines, "\n")
-}
-
-// renderSearchBar renders the search input.
-func (m PlayBrowseModel) renderSearchBar() string {
-	prefix := styles.Dim.Render("/")
-	if m.searchFocused {
-		prefix = styles.Accent.Render("/")
-	}
-
-	if m.searchQuery == "" {
-		if m.searchFocused {
-			return prefix + styles.Dim.Render(" Search modes...") + styles.Accent.Render("_")
-		}
-		return prefix + styles.Dim.Render(" Search modes...")
-	}
-
-	if m.searchFocused {
-		return prefix + " " + m.searchQuery + styles.Accent.Render("_")
-	}
-	return prefix + " " + m.searchQuery
 }
 
 // renderCategorizedModes renders modes grouped by category.
 func (m PlayBrowseModel) renderCategorizedModes() []string {
 	var lines []string
-	modeList := m.getDisplayModes()
 
 	// Find the longest mode name for alignment
 	maxNameLen := 0
-	for _, mode := range modeList {
+	for _, mode := range m.modes {
 		if len(mode.Name) > maxNameLen {
 			maxNameLen = len(mode.Name)
 		}
@@ -466,7 +306,7 @@ func (m PlayBrowseModel) renderCategorizedModes() []string {
 
 		// Modes in this category
 		for _, modeID := range modeIDs {
-			for i, mode := range modeList {
+			for i, mode := range m.modes {
 				if mode.ID == modeID {
 					line := m.renderModeLine(mode, i == m.cursor, maxNameLen)
 					lines = append(lines, padding+line)
@@ -475,35 +315,6 @@ func (m PlayBrowseModel) renderCategorizedModes() []string {
 			}
 		}
 		lines = append(lines, "")
-	}
-
-	return lines
-}
-
-// renderFilteredModes renders filtered modes without categories.
-func (m PlayBrowseModel) renderFilteredModes() []string {
-	var lines []string
-	modeList := m.filteredModes
-
-	// Find the longest mode name for alignment
-	maxNameLen := 0
-	for _, mode := range modeList {
-		if len(mode.Name) > maxNameLen {
-			maxNameLen = len(mode.Name)
-		}
-	}
-
-	// Calculate content width for centering
-	contentWidth := maxNameLen + 30
-	leftPadding := (m.width - contentWidth) / 2
-	if leftPadding < 0 {
-		leftPadding = 0
-	}
-	padding := strings.Repeat(" ", leftPadding)
-
-	for i, mode := range modeList {
-		line := m.renderModeLine(mode, i == m.cursor, maxNameLen)
-		lines = append(lines, padding+line)
 	}
 
 	return lines
