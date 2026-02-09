@@ -16,7 +16,6 @@ var errLoadFailed = errors.New("failed to load statistics")
 
 // Layout constants
 const (
-	statisticsHintsHeight = 3
 	// minQuestionsForFullLog is the minimum number of questions needed to show the "Full Log" option.
 	minQuestionsForFullLog = 10
 )
@@ -485,7 +484,7 @@ func (m Model) View() string {
 
 	return lipgloss.JoinVertical(lipgloss.Left,
 		mainArea,
-		lipgloss.Place(m.width, statisticsHintsHeight, lipgloss.Center, lipgloss.Center, hints),
+		lipgloss.Place(m.width, components.HintsHeight, lipgloss.Center, lipgloss.Center, hints),
 	)
 }
 
@@ -493,12 +492,12 @@ func (m Model) View() string {
 func (m Model) getHints() string {
 	switch m.view {
 	case ViewDashboard:
-		return components.RenderHintsStructured([]components.Hint{
+		return components.RenderHintsResponsive([]components.Hint{
 			{Key: "Esc", Action: "Back"},
 			{Key: "O", Action: "Operations"},
 			{Key: "H", Action: "History"},
 			{Key: "T", Action: "Trends"},
-		})
+		}, m.width)
 
 	case ViewOperations:
 		hintList := []components.Hint{
@@ -513,7 +512,7 @@ func (m Model) getHints() string {
 				components.Hint{Key: "Enter", Action: "Details"},
 			)
 		}
-		return components.RenderHintsStructured(hintList)
+		return components.RenderHintsResponsive(hintList, m.width)
 
 	case ViewOperationDetail:
 		hintList := []components.Hint{
@@ -523,14 +522,14 @@ func (m Model) getHints() string {
 		if m.opHasMistakes {
 			hintList = append(hintList, components.Hint{Key: "R", Action: "Review All"})
 		}
-		return components.RenderHintsStructured(hintList)
+		return components.RenderHintsResponsive(hintList, m.width)
 
 	case ViewOperationReview:
-		return components.RenderHintsStructured([]components.Hint{
+		return components.RenderHintsResponsive([]components.Hint{
 			{Key: "Esc", Action: "Back"},
 			{Key: "↑↓", Action: "Scroll"},
 			{Key: "PgUp/Dn", Action: "Jump"},
-		})
+		}, m.width)
 
 	case ViewHistory:
 		hintList := []components.Hint{
@@ -541,41 +540,41 @@ func (m Model) getHints() string {
 			{Key: "↑↓", Action: "Navigate"},
 			{Key: "Enter", Action: "Details"},
 		}
-		return components.RenderHintsStructured(hintList)
+		return components.RenderHintsResponsive(hintList, m.width)
 
 	case ViewSessionDetail:
 		if m.selectedSession != nil && len(m.selectedSession.Questions) > minQuestionsForFullLog {
-			return components.RenderHintsStructured([]components.Hint{
+			return components.RenderHintsResponsive([]components.Hint{
 				{Key: "Esc", Action: "Back"},
 				{Key: "L", Action: "Full Log"},
 				{Key: "H", Action: "History"},
-			})
+			}, m.width)
 		}
-		return components.RenderHintsStructured([]components.Hint{
+		return components.RenderHintsResponsive([]components.Hint{
 			{Key: "Esc", Action: "Back"},
 			{Key: "H", Action: "History"},
-		})
+		}, m.width)
 
 	case ViewSessionFullLog:
-		return components.RenderHintsStructured([]components.Hint{
+		return components.RenderHintsResponsive([]components.Hint{
 			{Key: "Esc", Action: "Back"},
 			{Key: "↑↓", Action: "Scroll"},
 			{Key: "←→", Action: "Filter"},
 			{Key: "PgUp/Dn", Action: "Jump"},
 			{Key: "S", Action: "Summary"},
-		})
+		}, m.width)
 
 	case ViewTrends:
-		return components.RenderHintsStructured([]components.Hint{
+		return components.RenderHintsResponsive([]components.Hint{
 			{Key: "Esc", Action: "Back"},
 			{Key: "m", Action: "Metric"},
 			{Key: "p", Action: "Period"},
-		})
+		}, m.width)
 
 	default:
-		return components.RenderHintsStructured([]components.Hint{
+		return components.RenderHintsResponsive([]components.Hint{
 			{Key: "Esc", Action: "Back"},
-		})
+		}, m.width)
 	}
 }
 
@@ -586,21 +585,14 @@ func (m *Model) SetSize(width, height int) {
 
 	viewportHeight := m.calculateViewportHeight()
 
-	if !m.viewportReady {
-		m.viewport = viewport.New(m.width, viewportHeight)
-		m.viewport.YPosition = 0
-		m.viewportReady = true
-	} else {
-		m.viewport.Width = m.width
-		m.viewport.Height = viewportHeight
-	}
+	components.SetViewportSize(&m.viewport, &m.viewportReady, m.width, viewportHeight)
 
 	m.updateViewportContent()
 }
 
 // calculateViewportHeight returns the viewport height.
 func (m Model) calculateViewportHeight() int {
-	viewportHeight := m.height - statisticsHintsHeight
+	viewportHeight := m.height - components.HintsHeight
 	if viewportHeight < 1 {
 		viewportHeight = 1
 	}

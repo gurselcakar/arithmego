@@ -29,10 +29,6 @@ const (
 	ActionX
 )
 
-// Layout constants for fixed sections
-const (
-	menuHintsHeight = 3 // Height reserved for hints at the bottom
-)
 
 // MenuModel represents the main menu screen.
 type MenuModel struct {
@@ -153,16 +149,16 @@ func (m MenuModel) View() string {
 	// All screens: viewport + hints
 	return lipgloss.JoinVertical(lipgloss.Left,
 		m.viewport.View(),
-		lipgloss.Place(m.width, menuHintsHeight, lipgloss.Center, lipgloss.Center, hints),
+		lipgloss.Place(m.width, components.HintsHeight, lipgloss.Center, lipgloss.Center, hints),
 	)
 }
 
 // getHints returns the hints for the menu.
 func (m MenuModel) getHints() string {
-	hints := components.RenderHintsStructured([]components.Hint{
+	hints := components.RenderHintsResponsive([]components.Hint{
 		{Key: "↑↓", Action: "Navigate"},
 		{Key: "→", Action: "Select"},
-	})
+	}, m.width)
 
 	// Auto-update installed notification (takes priority)
 	if m.updateInstalled != "" {
@@ -191,21 +187,14 @@ func (m *MenuModel) SetSize(width, height int) {
 
 	viewportHeight := m.calculateViewportHeight()
 
-	if !m.viewportReady {
-		m.viewport = viewport.New(m.width, viewportHeight)
-		m.viewport.YPosition = 0
-		m.viewportReady = true
-	} else {
-		m.viewport.Width = m.width
-		m.viewport.Height = viewportHeight
-	}
+	components.SetViewportSize(&m.viewport, &m.viewportReady, m.width, viewportHeight)
 
 	m.updateViewportContent()
 }
 
 // calculateViewportHeight returns the viewport height.
 func (m MenuModel) calculateViewportHeight() int {
-	viewportHeight := m.height - menuHintsHeight
+	viewportHeight := m.height - components.HintsHeight
 	if viewportHeight < 1 {
 		viewportHeight = 1
 	}

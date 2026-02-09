@@ -39,10 +39,6 @@ const (
 
 const playConfigFieldCount = 3
 
-// Layout constants
-const (
-	playConfigHintsHeight = 3
-)
 
 // PlayConfigModel represents the Configure & Start screen (Step 2 of play flow).
 type PlayConfigModel struct {
@@ -274,18 +270,18 @@ func (m PlayConfigModel) View() string {
 
 	return lipgloss.JoinVertical(lipgloss.Left,
 		m.viewport.View(),
-		lipgloss.Place(m.width, playConfigHintsHeight, lipgloss.Center, lipgloss.Center, hints),
+		lipgloss.Place(m.width, components.HintsHeight, lipgloss.Center, lipgloss.Center, hints),
 	)
 }
 
 // getHints returns the hints for the config screen.
 func (m PlayConfigModel) getHints() string {
-	return components.RenderHintsStructured([]components.Hint{
+	return components.RenderHintsResponsive([]components.Hint{
 		{Key: "Esc", Action: "Back"},
 		{Key: "↑↓", Action: "Navigate"},
 		{Key: "←→", Action: "Change"},
 		{Key: "Enter", Action: "Start"},
-	})
+	}, m.width)
 }
 
 // SetSize sets the screen dimensions.
@@ -295,21 +291,14 @@ func (m *PlayConfigModel) SetSize(width, height int) {
 
 	viewportHeight := m.calculateViewportHeight()
 
-	if !m.viewportReady {
-		m.viewport = viewport.New(m.width, viewportHeight)
-		m.viewport.YPosition = 0
-		m.viewportReady = true
-	} else {
-		m.viewport.Width = m.width
-		m.viewport.Height = viewportHeight
-	}
+	components.SetViewportSize(&m.viewport, &m.viewportReady, m.width, viewportHeight)
 
 	m.updateViewportContent()
 }
 
 // calculateViewportHeight returns the viewport height.
 func (m PlayConfigModel) calculateViewportHeight() int {
-	viewportHeight := m.height - playConfigHintsHeight
+	viewportHeight := m.height - components.HintsHeight
 	if viewportHeight < 1 {
 		viewportHeight = 1
 	}
@@ -396,7 +385,7 @@ func (m PlayConfigModel) renderContent() string {
 	)
 
 	// Preview box with sample equation
-	previewBoxWidth := 30
+	previewBoxWidth := min(m.width-4, 30)
 	previewContent := lipgloss.NewStyle().
 		Width(previewBoxWidth).
 		Align(lipgloss.Center).

@@ -108,7 +108,6 @@ func (m OnboardingModel) Init() tea.Cmd {
 
 // Layout constants for fixed sections
 const (
-	hintsHeight    = 3 // Height reserved for hints at the bottom
 	progressHeight = 2 // Height reserved for progress dots (1 line + padding)
 )
 
@@ -299,7 +298,7 @@ func (m OnboardingModel) View() string {
 	return lipgloss.JoinVertical(lipgloss.Left,
 		m.viewport.View(),
 		lipgloss.Place(m.width, progressHeight, lipgloss.Center, lipgloss.Center, progress),
-		lipgloss.Place(m.width, hintsHeight, lipgloss.Center, lipgloss.Center, hints),
+		lipgloss.Place(m.width, components.HintsHeight, lipgloss.Center, lipgloss.Center, hints),
 	)
 }
 
@@ -327,22 +326,22 @@ func (m OnboardingModel) getProgressForStep() string {
 func (m OnboardingModel) getHintsForStep() string {
 	switch m.step {
 	case StepWelcome:
-		return components.RenderHintsStructured([]components.Hint{
+		return components.RenderHintsResponsive([]components.Hint{
 			{Key: "S", Action: "Skip"},
 			{Key: "→", Action: "Continue"},
-		})
+		}, m.width)
 	case StepReady:
-		return components.RenderHintsStructured([]components.Hint{
+		return components.RenderHintsResponsive([]components.Hint{
 			{Key: "←", Action: "Back"},
 			{Key: "→", Action: "Start"},
-		})
+		}, m.width)
 	default:
-		return components.RenderHintsStructured([]components.Hint{
+		return components.RenderHintsResponsive([]components.Hint{
 			{Key: "←", Action: "Back"},
 			{Key: "↑↓", Action: "Navigate"},
 			{Key: "S", Action: "Skip"},
 			{Key: "→", Action: "Continue"},
-		})
+		}, m.width)
 	}
 }
 
@@ -353,14 +352,7 @@ func (m *OnboardingModel) SetSize(width, height int) {
 
 	viewportHeight := m.calculateViewportHeight()
 
-	if !m.viewportReady {
-		m.viewport = viewport.New(m.width, viewportHeight)
-		m.viewport.YPosition = 0
-		m.viewportReady = true
-	} else {
-		m.viewport.Width = m.width
-		m.viewport.Height = viewportHeight
-	}
+	components.SetViewportSize(&m.viewport, &m.viewportReady, m.width, viewportHeight)
 
 	m.updateViewportContent()
 }
@@ -368,7 +360,7 @@ func (m *OnboardingModel) SetSize(width, height int) {
 // calculateViewportHeight returns the viewport height.
 func (m OnboardingModel) calculateViewportHeight() int {
 	// Bottom sections are always present (progress dots + hints)
-	bottomSectionHeight := hintsHeight + progressHeight
+	bottomSectionHeight := components.HintsHeight + progressHeight
 
 	viewportHeight := m.height - bottomSectionHeight
 	if viewportHeight < 1 {
@@ -541,12 +533,13 @@ func (m OnboardingModel) renderInputModeContent() string {
 
 // Preview box dimensions (fixed size for consistent layout)
 const (
-	previewBoxWidth  = 34
 	previewBoxHeight = 5 // Inner content height (excludes border)
 )
 
 // renderInputModePreview renders a preview box showing how the selected input mode looks.
 func (m OnboardingModel) renderInputModePreview() string {
+	previewBoxWidth := min(m.width-4, 34)
+
 	// Fixed-size box style for consistent layout
 	boxStyle := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).

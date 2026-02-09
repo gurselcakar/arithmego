@@ -31,8 +31,7 @@ var categoryModes = map[string][]string{
 
 // Layout constants
 const (
-	playBrowseHintsHeight = 3
-	titleHeight           = 2 // title line + blank line
+	titleHeight = 2 // title line + blank line
 )
 
 // PlayBrowseModel represents the Mode Browser screen (Step 1 of play flow).
@@ -201,17 +200,17 @@ func (m PlayBrowseModel) View() string {
 		title,
 		"",
 		m.viewport.View(),
-		lipgloss.Place(m.width, playBrowseHintsHeight, lipgloss.Center, lipgloss.Center, hints),
+		lipgloss.Place(m.width, components.HintsHeight, lipgloss.Center, lipgloss.Center, hints),
 	)
 }
 
 // getHints returns the context-aware hints.
 func (m PlayBrowseModel) getHints() string {
-	return components.RenderHintsStructured([]components.Hint{
+	return components.RenderHintsResponsive([]components.Hint{
 		{Key: "Esc", Action: "Back"},
 		{Key: "↑↓", Action: "Navigate"},
 		{Key: "→", Action: "Select"},
-	})
+	}, m.width)
 }
 
 // SetSize sets the screen dimensions.
@@ -221,14 +220,7 @@ func (m *PlayBrowseModel) SetSize(width, height int) {
 
 	viewportHeight := m.calculateViewportHeight()
 
-	if !m.viewportReady {
-		m.viewport = viewport.New(m.width, viewportHeight)
-		m.viewport.YPosition = 0
-		m.viewportReady = true
-	} else {
-		m.viewport.Width = m.width
-		m.viewport.Height = viewportHeight
-	}
+	components.SetViewportSize(&m.viewport, &m.viewportReady, m.width, viewportHeight)
 
 	m.updateViewportContent()
 
@@ -250,7 +242,7 @@ func (m *PlayBrowseModel) SetSize(width, height int) {
 
 // calculateViewportHeight returns the viewport height.
 func (m PlayBrowseModel) calculateViewportHeight() int {
-	viewportHeight := m.height - playBrowseHintsHeight - titleHeight
+	viewportHeight := m.height - components.HintsHeight - titleHeight
 	if viewportHeight < 1 {
 		viewportHeight = 1
 	}

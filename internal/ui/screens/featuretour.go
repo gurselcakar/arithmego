@@ -144,7 +144,7 @@ func (m FeatureTourModel) View() string {
 	return lipgloss.JoinVertical(lipgloss.Left,
 		m.viewport.View(),
 		lipgloss.Place(m.width, progressHeight, lipgloss.Center, lipgloss.Center, progress),
-		lipgloss.Place(m.width, hintsHeight, lipgloss.Center, lipgloss.Center, hints),
+		lipgloss.Place(m.width, components.HintsHeight, lipgloss.Center, lipgloss.Center, hints),
 	)
 }
 
@@ -170,28 +170,28 @@ func (m FeatureTourModel) getHintsForStep() string {
 	switch m.step {
 	case StepPractice:
 		// First step: no back button
-		return components.RenderHintsStructured([]components.Hint{
+		return components.RenderHintsResponsive([]components.Hint{
 			{Key: "S", Action: "Skip"},
 			{Key: "→", Action: "Continue"},
-		})
+		}, m.width)
 	case StepStatistics:
 		// Last feature step: no skip (already at the end)
-		return components.RenderHintsStructured([]components.Hint{
+		return components.RenderHintsResponsive([]components.Hint{
 			{Key: "←", Action: "Back"},
 			{Key: "→", Action: "Continue"},
-		})
+		}, m.width)
 	case StepFinale:
 		// Finale: only "Let's go" - no back or skip
-		return components.RenderHintsStructured([]components.Hint{
+		return components.RenderHintsResponsive([]components.Hint{
 			{Key: "→", Action: "Let's go"},
-		})
+		}, m.width)
 	default:
 		// Middle steps: back, skip, continue
-		return components.RenderHintsStructured([]components.Hint{
+		return components.RenderHintsResponsive([]components.Hint{
 			{Key: "←", Action: "Back"},
 			{Key: "S", Action: "Skip"},
 			{Key: "→", Action: "Continue"},
-		})
+		}, m.width)
 	}
 }
 
@@ -202,21 +202,14 @@ func (m *FeatureTourModel) SetSize(width, height int) {
 
 	viewportHeight := m.calculateViewportHeight()
 
-	if !m.viewportReady {
-		m.viewport = viewport.New(m.width, viewportHeight)
-		m.viewport.YPosition = 0
-		m.viewportReady = true
-	} else {
-		m.viewport.Width = m.width
-		m.viewport.Height = viewportHeight
-	}
+	components.SetViewportSize(&m.viewport, &m.viewportReady, m.width, viewportHeight)
 
 	m.updateViewportContent()
 }
 
 // calculateViewportHeight returns the viewport height.
 func (m FeatureTourModel) calculateViewportHeight() int {
-	bottomSectionHeight := hintsHeight + progressHeight
+	bottomSectionHeight := components.HintsHeight + progressHeight
 
 	viewportHeight := m.height - bottomSectionHeight
 	if viewportHeight < 1 {

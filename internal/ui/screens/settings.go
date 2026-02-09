@@ -25,10 +25,6 @@ const (
 
 const settingsFieldCount = 5
 
-// Layout constants for fixed sections
-const (
-	settingsHintsHeight = 3 // Height reserved for hints at the bottom
-)
 
 // SettingsModel represents the settings screen.
 type SettingsModel struct {
@@ -215,7 +211,7 @@ func (m SettingsModel) View() string {
 	// All screens: viewport + hints
 	return lipgloss.JoinVertical(lipgloss.Left,
 		m.viewport.View(),
-		lipgloss.Place(m.width, settingsHintsHeight, lipgloss.Center, lipgloss.Center, hints),
+		lipgloss.Place(m.width, components.HintsHeight, lipgloss.Center, lipgloss.Center, hints),
 	)
 }
 
@@ -223,18 +219,18 @@ func (m SettingsModel) View() string {
 func (m SettingsModel) getHints() string {
 	if m.focusedField == SettingsFieldAutoUpdate || m.focusedField == SettingsFieldSkipQuitConfirm {
 		// Toggle hints
-		return components.RenderHintsStructured([]components.Hint{
+		return components.RenderHintsResponsive([]components.Hint{
 			{Key: "↑↓", Action: "Navigate"},
 			{Key: "Space", Action: "Toggle"},
 			{Key: "Esc", Action: "Back"},
-		})
+		}, m.width)
 	}
 	// Selector hints
-	return components.RenderHintsStructured([]components.Hint{
+	return components.RenderHintsResponsive([]components.Hint{
 		{Key: "↑↓", Action: "Navigate"},
 		{Key: "←→", Action: "Change"},
 		{Key: "Esc", Action: "Back"},
-	})
+	}, m.width)
 }
 
 // SetSize sets the screen dimensions.
@@ -244,21 +240,14 @@ func (m *SettingsModel) SetSize(width, height int) {
 
 	viewportHeight := m.calculateViewportHeight()
 
-	if !m.viewportReady {
-		m.viewport = viewport.New(m.width, viewportHeight)
-		m.viewport.YPosition = 0
-		m.viewportReady = true
-	} else {
-		m.viewport.Width = m.width
-		m.viewport.Height = viewportHeight
-	}
+	components.SetViewportSize(&m.viewport, &m.viewportReady, m.width, viewportHeight)
 
 	m.updateViewportContent()
 }
 
 // calculateViewportHeight returns the viewport height.
 func (m SettingsModel) calculateViewportHeight() int {
-	viewportHeight := m.height - settingsHintsHeight
+	viewportHeight := m.height - components.HintsHeight
 	if viewportHeight < 1 {
 		viewportHeight = 1
 	}
