@@ -16,8 +16,7 @@ type QuestionHistory struct {
 
 // Session tracks the state of a single game session.
 type Session struct {
-	// Configuration (immutable after creation)
-	Operations []Operation
+	Pool       *QuestionPool
 	Difficulty Difficulty
 	Duration   time.Duration
 
@@ -44,11 +43,10 @@ type Session struct {
 	LastResult *ScoreResult // Result of last answer (for UI feedback)
 }
 
-// NewSession creates a new game session with the given configuration.
-// Accepts one or more operations; questions will randomly use any of them.
-func NewSession(ops []Operation, diff Difficulty, duration time.Duration) *Session {
+// NewSession creates a new game session using the new generator/pool system.
+func NewSession(g Generator, diff Difficulty, duration time.Duration) *Session {
 	return &Session{
-		Operations: ops,
+		Pool:       NewQuestionPool(g, diff),
 		Difficulty: diff,
 		Duration:   duration,
 		TimeLeft:   duration,
@@ -83,9 +81,19 @@ func (s *Session) IsFinished() bool {
 
 // NextQuestion generates and sets a new question.
 func (s *Session) NextQuestion() {
-	q := GenerateQuestion(s.Operations, s.Difficulty)
-	s.Current = &q
-	s.QuestionStart = time.Now()
+	q := s.Pool.Next()
+	if q != nil {
+		s.Current = q
+		s.QuestionStart = time.Now()
+	}
+}
+
+// operationLabel extracts the operation name from the current question.
+func (s *Session) operationLabel() string {
+	if s.Current == nil {
+		return ""
+	}
+	return s.Current.OpLabel
 }
 
 // SubmitAnswer checks the user's answer and updates statistics.
@@ -126,7 +134,7 @@ func (s *Session) SubmitAnswer(answer int) bool {
 	// Record question history
 	s.History = append(s.History, QuestionHistory{
 		Question:      s.Current.Display,
-		Operation:     s.Current.Operation.Name(),
+		Operation:     s.operationLabel(),
 		CorrectAnswer: s.Current.Answer,
 		UserAnswer:    answer,
 		Correct:       result.Correct,
@@ -145,7 +153,7 @@ func (s *Session) Skip() {
 	if s.Current != nil {
 		s.History = append(s.History, QuestionHistory{
 			Question:      s.Current.Display,
-			Operation:     s.Current.Operation.Name(),
+			Operation:     s.operationLabel(),
 			CorrectAnswer: s.Current.Answer,
 			UserAnswer:    0,
 			Correct:       false,

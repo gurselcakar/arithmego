@@ -332,38 +332,6 @@ func GetSessionsByFilter(stats *storage.Statistics, filter AggregateFilter) []st
 	return sessions
 }
 
-// GetAllModes returns all unique mode names from sessions.
-func GetAllModes(stats *storage.Statistics) []string {
-	modeSet := make(map[string]bool)
-	for _, session := range stats.Sessions {
-		modeSet[session.Mode] = true
-	}
-
-	modes := make([]string, 0, len(modeSet))
-	for mode := range modeSet {
-		modes = append(modes, mode)
-	}
-	sort.Strings(modes)
-	return modes
-}
-
-// GetAllOperations returns all unique operation names from sessions.
-func GetAllOperations(stats *storage.Statistics) []string {
-	opSet := make(map[string]bool)
-	for _, session := range stats.Sessions {
-		for _, q := range session.Questions {
-			opSet[q.Operation] = true
-		}
-	}
-
-	ops := make([]string, 0, len(opSet))
-	for op := range opSet {
-		ops = append(ops, op)
-	}
-	sort.Strings(ops)
-	return ops
-}
-
 // GetOperationsByCategory returns operations that belong to a specific category.
 // If category is empty, returns all operations.
 func GetOperationsByCategory(stats *storage.Statistics, category string) []string {

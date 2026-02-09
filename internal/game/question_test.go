@@ -4,10 +4,8 @@ import "testing"
 
 func TestQuestionCheckAnswer(t *testing.T) {
 	q := Question{
-		Operands:  []int{5, 3},
-		Operation: &mockOp{},
-		Answer:    8,
-		Display:   "5 + 3",
+		Answer:  8,
+		Display: "5 + 3",
 	}
 
 	tests := []struct {

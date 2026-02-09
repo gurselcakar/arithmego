@@ -4,7 +4,9 @@ import (
 	"time"
 
 	"github.com/gurselcakar/arithmego/internal/game"
-	"github.com/gurselcakar/arithmego/internal/game/operations"
+
+	// Import gen to trigger init() which registers all generators
+	_ "github.com/gurselcakar/arithmego/internal/game/gen"
 )
 
 // Preset mode IDs
@@ -35,14 +37,13 @@ const (
 )
 
 // RegisterPresets registers all built-in modes.
-// Must be called after operations are registered.
 func RegisterPresets() {
 	// Basic operations
 	Register(&Mode{
 		ID:                IDAddition,
 		Name:              "Addition",
 		Description:       "Calculate a + b",
-		Operations:        getOperations("Addition"),
+		GeneratorLabel:    "Addition",
 		DefaultDifficulty: game.Medium,
 		DefaultDuration:   60 * time.Second,
 		Category:          CategorySprint,
@@ -52,7 +53,7 @@ func RegisterPresets() {
 		ID:                IDSubtraction,
 		Name:              "Subtraction",
 		Description:       "Calculate a − b",
-		Operations:        getOperations("Subtraction"),
+		GeneratorLabel:    "Subtraction",
 		DefaultDifficulty: game.Medium,
 		DefaultDuration:   60 * time.Second,
 		Category:          CategorySprint,
@@ -62,7 +63,7 @@ func RegisterPresets() {
 		ID:                IDMultiplication,
 		Name:              "Multiplication",
 		Description:       "Calculate a × b",
-		Operations:        getOperations("Multiplication"),
+		GeneratorLabel:    "Multiplication",
 		DefaultDifficulty: game.Medium,
 		DefaultDuration:   60 * time.Second,
 		Category:          CategorySprint,
@@ -72,7 +73,7 @@ func RegisterPresets() {
 		ID:                IDDivision,
 		Name:              "Division",
 		Description:       "Calculate a ÷ b",
-		Operations:        getOperations("Division"),
+		GeneratorLabel:    "Division",
 		DefaultDifficulty: game.Medium,
 		DefaultDuration:   60 * time.Second,
 		Category:          CategorySprint,
@@ -83,7 +84,7 @@ func RegisterPresets() {
 		ID:                IDSquares,
 		Name:              "Squares",
 		Description:       "Calculate n²",
-		Operations:        getOperations("Square"),
+		GeneratorLabel:    "Square",
 		DefaultDifficulty: game.Medium,
 		DefaultDuration:   60 * time.Second,
 		Category:          CategorySprint,
@@ -93,7 +94,7 @@ func RegisterPresets() {
 		ID:                IDCubes,
 		Name:              "Cubes",
 		Description:       "Calculate n³",
-		Operations:        getOperations("Cube"),
+		GeneratorLabel:    "Cube",
 		DefaultDifficulty: game.Medium,
 		DefaultDuration:   60 * time.Second,
 		Category:          CategorySprint,
@@ -103,7 +104,7 @@ func RegisterPresets() {
 		ID:                IDSquareRoots,
 		Name:              "Square Roots",
 		Description:       "Calculate √n",
-		Operations:        getOperations("Square Root"),
+		GeneratorLabel:    "Square Root",
 		DefaultDifficulty: game.Medium,
 		DefaultDuration:   60 * time.Second,
 		Category:          CategorySprint,
@@ -113,7 +114,7 @@ func RegisterPresets() {
 		ID:                IDCubeRoots,
 		Name:              "Cube Roots",
 		Description:       "Calculate ³√n",
-		Operations:        getOperations("Cube Root"),
+		GeneratorLabel:    "Cube Root",
 		DefaultDifficulty: game.Medium,
 		DefaultDuration:   60 * time.Second,
 		Category:          CategorySprint,
@@ -124,7 +125,7 @@ func RegisterPresets() {
 		ID:                IDExponents,
 		Name:              "Exponents",
 		Description:       "Calculate aⁿ",
-		Operations:        getOperations("Power"),
+		GeneratorLabel:    "Power",
 		DefaultDifficulty: game.Medium,
 		DefaultDuration:   60 * time.Second,
 		Category:          CategorySprint,
@@ -134,7 +135,7 @@ func RegisterPresets() {
 		ID:                IDRemainders,
 		Name:              "Remainders",
 		Description:       "Calculate a mod b",
-		Operations:        getOperations("Modulo"),
+		GeneratorLabel:    "Modulo",
 		DefaultDifficulty: game.Medium,
 		DefaultDuration:   60 * time.Second,
 		Category:          CategorySprint,
@@ -144,7 +145,7 @@ func RegisterPresets() {
 		ID:                IDPercentages,
 		Name:              "Percentages",
 		Description:       "Calculate percentages",
-		Operations:        getOperations("Percentage"),
+		GeneratorLabel:    "Percentage",
 		DefaultDifficulty: game.Medium,
 		DefaultDuration:   60 * time.Second,
 		Category:          CategorySprint,
@@ -154,7 +155,7 @@ func RegisterPresets() {
 		ID:                IDFactorials,
 		Name:              "Factorials",
 		Description:       "Calculate n!",
-		Operations:        getOperations("Factorial"),
+		GeneratorLabel:    "Factorial",
 		DefaultDifficulty: game.Medium,
 		DefaultDuration:   60 * time.Second,
 		Category:          CategorySprint,
@@ -165,7 +166,7 @@ func RegisterPresets() {
 		ID:                IDMixedBasics,
 		Name:              "Mixed Basics",
 		Description:       "Random mix of + − × ÷",
-		Operations:        getOperations("Addition", "Subtraction", "Multiplication", "Division"),
+		GeneratorLabel:    "Mixed Basics",
 		DefaultDifficulty: game.Medium,
 		DefaultDuration:   60 * time.Second,
 		Category:          CategoryChallenge,
@@ -175,7 +176,7 @@ func RegisterPresets() {
 		ID:                IDMixedPowers,
 		Name:              "Mixed Powers",
 		Description:       "Random mix of n² n³ √n ³√n",
-		Operations:        getOperations("Square", "Cube", "Square Root", "Cube Root"),
+		GeneratorLabel:    "Mixed Powers",
 		DefaultDifficulty: game.Medium,
 		DefaultDuration:   60 * time.Second,
 		Category:          CategoryChallenge,
@@ -185,7 +186,7 @@ func RegisterPresets() {
 		ID:                IDMixedAdvanced,
 		Name:              "Mixed Advanced",
 		Description:       "Random mix of mod % n! aⁿ",
-		Operations:        getOperations("Modulo", "Percentage", "Factorial", "Power"),
+		GeneratorLabel:    "Mixed Advanced",
 		DefaultDifficulty: game.Medium,
 		DefaultDuration:   60 * time.Second,
 		Category:          CategoryChallenge,
@@ -195,23 +196,9 @@ func RegisterPresets() {
 		ID:                IDAnythingGoes,
 		Name:              "Anything Goes",
 		Description:       "Random mix of all operations",
-		Operations:        operations.All(),
+		GeneratorLabel:    "Anything Goes",
 		DefaultDifficulty: game.Medium,
 		DefaultDuration:   60 * time.Second,
 		Category:          CategoryChallenge,
 	})
-}
-
-// getOperations retrieves operations by name from the registry.
-// Panics if any operation is not found (indicates a bug in preset definitions).
-func getOperations(names ...string) []game.Operation {
-	ops := make([]game.Operation, 0, len(names))
-	for _, name := range names {
-		op, ok := operations.Get(name)
-		if !ok {
-			panic("getOperations: unknown operation " + name)
-		}
-		ops = append(ops, op)
-	}
-	return ops
 }

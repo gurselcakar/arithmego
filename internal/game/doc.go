@@ -8,35 +8,30 @@
 //
 // The primary types are:
 //
-//   - [Operation]: Interface for arithmetic operations (addition, multiplication, etc.)
-//   - [Question]: A generated problem with operands, expression, and answer
+//   - [Generator]: Interface for question generators (implemented in game/gen)
+//   - [Question]: A generated problem with expression tree, display string, and answer
 //   - [Difficulty]: Skill level affecting number ranges and complexity
 //   - [Session]: Tracks state during active gameplay
+//   - [QuestionPool]: Batch pre-generation with deduplication
 //
-// # Operations
+// # Generators
 //
-// Operations are defined in the operations subpackage and implement the
-// [Operation] interface. Each operation can generate questions at various
-// difficulty levels and compute difficulty scores for adaptive gameplay.
-//
-//	ops := operations.BasicOperations() // +, -, ×, ÷
-//	question := game.GenerateQuestion(ops, game.Medium)
-//	fmt.Println(question.Expression) // "42 + 17"
+// Generators are defined in the gen subpackage and implement the
+// [Generator] interface. Each generator produces questions for a specific
+// mode at various difficulty levels using weighted patterns.
 //
 // # Sessions
 //
 // A [Session] manages the flow of a timed game:
 //
-//	session := game.NewSession(ops, game.Medium, 60*time.Second)
+//	session := game.NewSession(generator, game.Medium, 60*time.Second)
 //	session.Start()
-//	question := session.CurrentQuestion()
 //	session.SubmitAnswer(59) // returns true if correct
-//	results := session.End()
 //
 // # Scoring
 //
 // Points are awarded based on correctness and response time. Streaks of
-// correct answers earn bonus multipliers. See [ComputeScore] for details.
+// correct answers earn bonus multipliers. See [CalculateCorrectAnswer] for details.
 //
 // # Multiple Choice
 //

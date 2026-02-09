@@ -2,7 +2,6 @@ package screens
 
 import (
 	"fmt"
-	"math/rand"
 	"strings"
 	"time"
 
@@ -11,6 +10,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 
 	"github.com/gurselcakar/arithmego/internal/game"
+	"github.com/gurselcakar/arithmego/internal/game/gen"
 	"github.com/gurselcakar/arithmego/internal/modes"
 	"github.com/gurselcakar/arithmego/internal/storage"
 	"github.com/gurselcakar/arithmego/internal/ui/components"
@@ -104,7 +104,7 @@ func NewPlayConfig(mode *modes.Mode, config *storage.Config) PlayConfigModel {
 
 // generateSampleQuestion creates a sample question for the current difficulty.
 func (m *PlayConfigModel) generateSampleQuestion() {
-	if m.selectedMode == nil || len(m.selectedMode.Operations) == 0 {
+	if m.selectedMode == nil || m.selectedMode.GeneratorLabel == "" {
 		m.sampleQuestion = ""
 		return
 	}
@@ -116,11 +116,17 @@ func (m *PlayConfigModel) generateSampleQuestion() {
 	}
 
 	diff := diffs[m.difficultyIndex]
-	// Pick a random operation for mixed modes
-	ops := m.selectedMode.Operations
-	op := ops[rand.Intn(len(ops))]
-	question := op.Generate(diff)
-	m.sampleQuestion = question.Display + " = ?"
+	g, ok := gen.Get(m.selectedMode.GeneratorLabel)
+	if !ok {
+		m.sampleQuestion = ""
+		return
+	}
+	q := g.Generate(diff)
+	if q == nil {
+		m.sampleQuestion = ""
+		return
+	}
+	m.sampleQuestion = q.Display
 }
 
 // Init initializes the PlayConfigModel.

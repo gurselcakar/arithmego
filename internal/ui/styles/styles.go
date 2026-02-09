@@ -4,15 +4,14 @@ import "github.com/charmbracelet/lipgloss"
 
 // ANSI color constants (standard 16-color palette for terminal compatibility)
 const (
-	ColorRed         = lipgloss.Color("1")
-	ColorGreen       = lipgloss.Color("2")
-	ColorYellow      = lipgloss.Color("3")
-	ColorBlue        = lipgloss.Color("4")
-	ColorMagenta     = lipgloss.Color("5")
-	ColorCyan        = lipgloss.Color("6")
-	ColorWhite       = lipgloss.Color("7")
-	ColorBrightBlue  = lipgloss.Color("12")
-	ColorBrightWhite = lipgloss.Color("15")
+	colorRed         = lipgloss.Color("1")
+	colorGreen       = lipgloss.Color("2")
+	colorYellow      = lipgloss.Color("3")
+	colorMagenta     = lipgloss.Color("5")
+	colorCyan        = lipgloss.Color("6")
+	colorWhite       = lipgloss.Color("7")
+	colorBrightBlue  = lipgloss.Color("12")
+	colorBrightWhite = lipgloss.Color("15")
 )
 
 var (
@@ -24,14 +23,11 @@ var (
 	// Currently identical, but kept separate for future styling flexibility.
 	Dim    = lipgloss.NewStyle().Faint(true)
 	Subtle = lipgloss.NewStyle().Faint(true)
-	Accent = lipgloss.NewStyle().Foreground(ColorCyan)
+	Accent = lipgloss.NewStyle().Foreground(colorCyan)
 
 	// Feedback (brief flashes)
-	Correct   = lipgloss.NewStyle().Foreground(ColorGreen)
-	Incorrect = lipgloss.NewStyle().Foreground(ColorRed)
-
-	// Layout
-	Centered = lipgloss.NewStyle().Align(lipgloss.Center)
+	Correct   = lipgloss.NewStyle().Foreground(colorGreen)
+	Incorrect = lipgloss.NewStyle().Foreground(colorRed)
 
 	// Selection
 	Selected   = lipgloss.NewStyle().Bold(true)
@@ -39,24 +35,24 @@ var (
 
 	// Scoring - Score display
 	Score      = lipgloss.NewStyle().Bold(true)
-	ScoreLarge = lipgloss.NewStyle().Bold(true).Foreground(ColorBrightWhite)
+	ScoreLarge = lipgloss.NewStyle().Bold(true).Foreground(colorBrightWhite)
 
 	// Scoring - Multiplier
-	Multiplier = lipgloss.NewStyle().Foreground(ColorYellow)
+	Multiplier = lipgloss.NewStyle().Foreground(colorYellow)
 
 	// Scoring - Streak tiers (progressively more intense)
 	StreakNone        = lipgloss.NewStyle().Faint(true)
-	StreakBuilding    = lipgloss.NewStyle().Foreground(ColorWhite)
-	StreakActive      = lipgloss.NewStyle().Foreground(ColorGreen)
-	StreakMax         = lipgloss.NewStyle().Foreground(ColorGreen).Bold(true)
-	StreakBlazing     = lipgloss.NewStyle().Foreground(ColorYellow).Bold(true)
-	StreakUnstoppable = lipgloss.NewStyle().Foreground(ColorMagenta).Bold(true)
-	StreakLegendary   = lipgloss.NewStyle().Foreground(ColorCyan).Bold(true)
+	StreakBuilding    = lipgloss.NewStyle().Foreground(colorWhite)
+	StreakActive      = lipgloss.NewStyle().Foreground(colorGreen)
+	StreakMax         = lipgloss.NewStyle().Foreground(colorGreen).Bold(true)
+	StreakBlazing     = lipgloss.NewStyle().Foreground(colorYellow).Bold(true)
+	StreakUnstoppable = lipgloss.NewStyle().Foreground(colorMagenta).Bold(true)
+	StreakLegendary   = lipgloss.NewStyle().Foreground(colorCyan).Bold(true)
 
 	// Scoring - Milestone announcements
-	Milestone = lipgloss.NewStyle().Bold(true).Foreground(ColorYellow)
+	Milestone = lipgloss.NewStyle().Bold(true).Foreground(colorYellow)
 
 	// Branding
-	Logo    = lipgloss.NewStyle().Foreground(ColorBrightBlue)
-	Tagline = lipgloss.NewStyle().Foreground(ColorWhite)
+	Logo    = lipgloss.NewStyle().Foreground(colorBrightBlue)
+	Tagline = lipgloss.NewStyle().Foreground(colorWhite)
 )

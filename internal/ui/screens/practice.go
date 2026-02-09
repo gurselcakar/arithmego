@@ -8,17 +8,42 @@ import (
 	"github.com/charmbracelet/lipgloss"
 
 	"github.com/gurselcakar/arithmego/internal/game"
-	"github.com/gurselcakar/arithmego/internal/game/operations"
+	"github.com/gurselcakar/arithmego/internal/game/gen"
 	"github.com/gurselcakar/arithmego/internal/ui/components"
 	"github.com/gurselcakar/arithmego/internal/ui/styles"
 )
 
-// operationEntry represents an operation for selection.
-type operationEntry struct {
-	op       game.Operation
-	name     string
-	symbol   string
-	category game.Category
+// practiceEntry represents a selectable operation in practice mode.
+type practiceEntry struct {
+	label          string // Generator label (maps to gen registry)
+	name           string // Display name
+	symbol         string // Display symbol
+	isMixed        bool   // True for the "Mixed" option at end of category
+}
+
+// categoryEntries defines the operations available per category.
+var categoryEntries = map[game.Category][]practiceEntry{
+	game.CategoryBasic: {
+		{label: "Addition", name: "Addition", symbol: "+"},
+		{label: "Subtraction", name: "Subtraction", symbol: "−"},
+		{label: "Multiplication", name: "Multiplication", symbol: "×"},
+		{label: "Division", name: "Division", symbol: "÷"},
+		{label: "Mixed Basics", name: "Mixed", symbol: "*", isMixed: true},
+	},
+	game.CategoryPower: {
+		{label: "Square", name: "Square", symbol: "²"},
+		{label: "Cube", name: "Cube", symbol: "³"},
+		{label: "Square Root", name: "Square Root", symbol: "√"},
+		{label: "Cube Root", name: "Cube Root", symbol: "∛"},
+		{label: "Mixed Powers", name: "Mixed", symbol: "*", isMixed: true},
+	},
+	game.CategoryAdvanced: {
+		{label: "Modulo", name: "Modulo", symbol: "mod"},
+		{label: "Power", name: "Power", symbol: "^"},
+		{label: "Percentage", name: "Percentage", symbol: "%"},
+		{label: "Factorial", name: "Factorial", symbol: "!"},
+		{label: "Mixed Advanced", name: "Mixed", symbol: "*", isMixed: true},
+	},
 }
 
 // PracticeSettings holds the practice mode configuration for persistence.
@@ -36,12 +61,11 @@ type PracticeModel struct {
 	height int
 
 	// Category and operation selection
-	categories       []game.Category    // Available categories
-	categoryIdx      int                // Currently selected category index
-	categoryOps      []operationEntry   // Operations for current category (including Mixed)
-	operationIdx     int                // Currently selected operation within category
-	selectedOp       game.Operation     // Current operation (nil = mixed)
-	isMixed          bool               // True when "Mixed" is selected
+	categories     []game.Category    // Available categories
+	categoryIdx    int                // Currently selected category index
+	categoryOps    []practiceEntry    // Operations for current category
+	operationIdx   int                // Currently selected operation within category
+	isMixed        bool               // True when "Mixed" is selected
 
 	// Difficulty
 	difficulty    game.Difficulty
@@ -120,10 +144,8 @@ func NewPracticeWithSettings(settings *PracticeSettings) PracticeModel {
 // Settings returns the current practice settings for persistence.
 func (m PracticeModel) Settings() PracticeSettings {
 	var opName string
-	if m.isMixed {
-		opName = "Mixed"
-	} else if m.selectedOp != nil {
-		opName = m.selectedOp.Name()
+	if m.operationIdx < len(m.categoryOps) {
+		opName = m.categoryOps[m.operationIdx].name
 	} else {
 		opName = "Mixed"
 	}
@@ -145,51 +167,11 @@ func (m PracticeModel) Settings() PracticeSettings {
 // buildCategoryOps builds the operation list for the current category.
 func (m *PracticeModel) buildCategoryOps() {
 	cat := m.categories[m.categoryIdx]
-	ops := operations.ByCategory(cat)
-	sortedOps := sortOperations(ops, cat)
-
-	m.categoryOps = []operationEntry{}
-	for _, op := range sortedOps {
-		m.categoryOps = append(m.categoryOps, operationEntry{
-			op:       op,
-			name:     op.Name(),
-			symbol:   op.Symbol(),
-			category: cat,
-		})
+	entries, ok := categoryEntries[cat]
+	if !ok {
+		entries = categoryEntries[game.CategoryBasic]
 	}
-
-	// Add "Mixed" option at the end
-	m.categoryOps = append(m.categoryOps, operationEntry{
-		op:       nil,
-		name:     "Mixed",
-		symbol:   "*",
-		category: cat,
-	})
-}
-
-// sortOperations returns operations in a consistent display order.
-func sortOperations(ops []game.Operation, cat game.Category) []game.Operation {
-	// Define preferred order by operation name
-	order := map[string]int{
-		// Basic
-		"Addition": 0, "Subtraction": 1, "Multiplication": 2, "Division": 3,
-		// Power
-		"Square": 0, "Cube": 1, "Square Root": 2, "Cube Root": 3,
-		// Advanced
-		"Modulo": 0, "Power": 1, "Percentage": 2, "Factorial": 3,
-	}
-
-	sorted := make([]game.Operation, len(ops))
-	copy(sorted, ops)
-
-	// Simple insertion sort (small list)
-	for i := 1; i < len(sorted); i++ {
-		for j := i; j > 0 && order[sorted[j].Name()] < order[sorted[j-1].Name()]; j-- {
-			sorted[j], sorted[j-1] = sorted[j-1], sorted[j]
-		}
-	}
-
-	return sorted
+	m.categoryOps = entries
 }
 
 // Init initializes the practice model.
@@ -293,7 +275,6 @@ func (m PracticeModel) Update(msg tea.Msg) (PracticeModel, tea.Cmd) {
 	return m, nil
 }
 
-
 // cycleCategory cycles to the next category (wrapping around).
 func (m *PracticeModel) cycleCategory() {
 	m.categoryIdx = (m.categoryIdx + 1) % len(m.categories)
@@ -334,37 +315,30 @@ func (m *PracticeModel) applySelectedOperation() {
 		return
 	}
 	entry := m.categoryOps[m.operationIdx]
-	if entry.op == nil {
-		// Mixed mode for this category
-		m.selectedOp = nil
-		m.isMixed = true
-	} else {
-		m.selectedOp = entry.op
-		m.isMixed = false
-	}
+	m.isMixed = entry.isMixed
 	m.generateQuestion()
 }
 
 // generateQuestion creates a new question based on current settings.
 func (m *PracticeModel) generateQuestion() {
-	var ops []game.Operation
-
-	if m.isMixed {
-		// Mixed mode: use all operations from current category
-		ops = operations.ByCategory(m.categories[m.categoryIdx])
-	} else if m.selectedOp != nil {
-		ops = []game.Operation{m.selectedOp}
-	} else {
-		// Fallback to basic operations
-		ops = operations.BasicOperations()
+	if m.operationIdx >= len(m.categoryOps) {
+		return
+	}
+	entry := m.categoryOps[m.operationIdx]
+	g, ok := gen.Get(entry.label)
+	if !ok {
+		// Fallback to Addition
+		g, _ = gen.Get("Addition")
+	}
+	if g == nil {
+		return
 	}
 
-	if len(ops) == 0 {
-		ops = operations.BasicOperations()
+	q := g.Generate(m.difficulty)
+	if q == nil {
+		return
 	}
-
-	q := game.GenerateQuestion(ops, m.difficulty)
-	m.current = &q
+	m.current = q
 	m.input.Reset()
 	m.choices.Reset()
 
@@ -440,10 +414,8 @@ func (m PracticeModel) View() string {
 func (m PracticeModel) viewPractice() string {
 	// Header bar with current settings
 	var opName string
-	if m.isMixed {
-		opName = "Mixed"
-	} else if m.selectedOp != nil {
-		opName = m.selectedOp.Name()
+	if m.operationIdx < len(m.categoryOps) {
+		opName = m.categoryOps[m.operationIdx].name
 	} else {
 		opName = "Mixed"
 	}
@@ -566,4 +538,3 @@ func categoryDisplayName(cat game.Category) string {
 		return string(cat)
 	}
 }
-

@@ -1,36 +1,34 @@
 package game
 
 import (
+	"fmt"
 	"testing"
 	"time"
 )
 
-// mockOperation is a simple operation for testing.
-type mockOperation struct{}
+// mockGenerator implements Generator for testing.
+type mockGenerator struct {
+	counter int
+}
 
-func (m *mockOperation) Name() string           { return "Mock" }
-func (m *mockOperation) Symbol() string         { return "?" }
-func (m *mockOperation) Arity() Arity           { return Binary }
-func (m *mockOperation) Category() Category     { return CategoryBasic }
-func (m *mockOperation) Apply(operands []int) int { return operands[0] + operands[1] }
-func (m *mockOperation) ScoreDifficulty(operands []int, answer int) float64 { return 5.0 }
-func (m *mockOperation) Format(operands []int) string { return "1 ? 1" }
-func (m *mockOperation) Generate(diff Difficulty) Question {
-	return Question{
-		Operands:  []int{1, 1},
-		Operation: m,
-		Answer:    2,
-		Display:   "1 ? 1",
+func (m *mockGenerator) Generate(diff Difficulty) *Question {
+	m.counter++
+	return &Question{
+		Key:     fmt.Sprintf("mock-%d", m.counter),
+		OpLabel: "Mock",
+		Answer:  2,
+		Display: "1 + 1",
 	}
 }
 
-func TestNewSession(t *testing.T) {
-	op := &mockOperation{}
-	ops := []Operation{op}
-	s := NewSession(ops, Medium, 60*time.Second)
+func (m *mockGenerator) Label() string { return "Mock" }
 
-	if len(s.Operations) != 1 || s.Operations[0] != op {
-		t.Error("session operations not set correctly")
+func TestNewSession(t *testing.T) {
+	g := &mockGenerator{}
+	s := NewSession(g, Medium, 60*time.Second)
+
+	if s.Pool == nil {
+		t.Error("session pool should be set")
 	}
 	if s.Difficulty != Medium {
 		t.Error("session difficulty not set correctly")
@@ -44,8 +42,8 @@ func TestNewSession(t *testing.T) {
 }
 
 func TestSessionStart(t *testing.T) {
-	op := &mockOperation{}
-	s := NewSession([]Operation{op}, Medium, 60*time.Second)
+	g := &mockGenerator{}
+	s := NewSession(g, Medium, 60*time.Second)
 	s.Start()
 
 	if s.StartTime.IsZero() {
@@ -60,8 +58,8 @@ func TestSessionStart(t *testing.T) {
 }
 
 func TestSessionSubmitAnswer(t *testing.T) {
-	op := &mockOperation{}
-	s := NewSession([]Operation{op}, Medium, 60*time.Second)
+	g := &mockGenerator{}
+	s := NewSession(g, Medium, 60*time.Second)
 	s.Start()
 
 	// Correct answer
@@ -84,8 +82,8 @@ func TestSessionSubmitAnswer(t *testing.T) {
 }
 
 func TestSessionSkip(t *testing.T) {
-	op := &mockOperation{}
-	s := NewSession([]Operation{op}, Medium, 60*time.Second)
+	g := &mockGenerator{}
+	s := NewSession(g, Medium, 60*time.Second)
 	s.Start()
 
 	s.Skip()
@@ -95,8 +93,8 @@ func TestSessionSkip(t *testing.T) {
 }
 
 func TestSessionAccuracy(t *testing.T) {
-	op := &mockOperation{}
-	s := NewSession([]Operation{op}, Medium, 60*time.Second)
+	g := &mockGenerator{}
+	s := NewSession(g, Medium, 60*time.Second)
 	s.Start()
 
 	// No answers yet - should be 0
@@ -115,8 +113,8 @@ func TestSessionAccuracy(t *testing.T) {
 }
 
 func TestSessionIsFinished(t *testing.T) {
-	op := &mockOperation{}
-	s := NewSession([]Operation{op}, Medium, 1*time.Millisecond)
+	g := &mockGenerator{}
+	s := NewSession(g, Medium, 1*time.Millisecond)
 	s.Start()
 
 	if s.IsFinished() {

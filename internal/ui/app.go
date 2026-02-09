@@ -6,6 +6,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/gurselcakar/arithmego/internal/game"
+	"github.com/gurselcakar/arithmego/internal/game/gen"
 	"github.com/gurselcakar/arithmego/internal/modes"
 	"github.com/gurselcakar/arithmego/internal/storage"
 	"github.com/gurselcakar/arithmego/internal/ui/components"
@@ -678,7 +679,7 @@ func (a *App) completeOnboarding(modeID, difficulty string, durationMs int64, in
 // startGame creates a new session and starts the game.
 // If mode is invalid, gracefully returns to the Play Browse screen.
 func (a *App) startGame() (tea.Model, tea.Cmd) {
-	if a.currentMode == nil || len(a.currentMode.Operations) == 0 {
+	if a.currentMode == nil || a.currentMode.GeneratorLabel == "" {
 		// Gracefully recover: return to Play Browse screen instead of crashing
 		a.isFirstGame = false // Reset flag on error
 		a.playBrowseModel = screens.NewPlayBrowse(a.config)
@@ -687,7 +688,14 @@ func (a *App) startGame() (tea.Model, tea.Cmd) {
 		return a, a.playBrowseModel.Init()
 	}
 
-	a.session = game.NewSession(a.currentMode.Operations, a.lastDifficulty, a.lastDuration)
+	g, ok := gen.Get(a.currentMode.GeneratorLabel)
+	if !ok {
+		a.playBrowseModel = screens.NewPlayBrowse(a.config)
+		a.playBrowseModel.SetSize(a.width, a.height)
+		a.screen = ScreenPlayBrowse
+		return a, a.playBrowseModel.Init()
+	}
+	a.session = game.NewSession(g, a.lastDifficulty, a.lastDuration)
 	a.gameModel = screens.NewGame(a.session, a.lastInputMethod)
 	a.gameModel.SetSize(a.width, a.height)
 	a.screen = ScreenGame

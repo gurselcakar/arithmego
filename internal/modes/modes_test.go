@@ -6,8 +6,8 @@ import (
 
 	"github.com/gurselcakar/arithmego/internal/game"
 
-	// Register operations for testing
-	_ "github.com/gurselcakar/arithmego/internal/game/operations"
+	// Import gen to trigger init() which registers all generators
+	_ "github.com/gurselcakar/arithmego/internal/game/gen"
 )
 
 func init() {
@@ -69,76 +69,11 @@ func TestGetModeNotFound(t *testing.T) {
 	}
 }
 
-func TestModesByCategory(t *testing.T) {
-	sprintModes := ByCategory(CategorySprint)
-	if len(sprintModes) != 12 {
-		t.Errorf("expected 12 sprint modes, got %d", len(sprintModes))
-	}
-
-	challengeModes := ByCategory(CategoryChallenge)
-	if len(challengeModes) != 4 {
-		t.Errorf("expected 4 challenge modes, got %d", len(challengeModes))
-	}
-}
-
-func TestSprintModesHaveSingleOperation(t *testing.T) {
-	sprintModes := ByCategory(CategorySprint)
-	for _, mode := range sprintModes {
-		if !mode.IsSingleOperation() {
-			t.Errorf("sprint mode %q should have single operation, has %d", mode.Name, len(mode.Operations))
+func TestAllModesHaveGeneratorLabel(t *testing.T) {
+	for _, mode := range All() {
+		if mode.GeneratorLabel == "" {
+			t.Errorf("mode %q has no generator label", mode.Name)
 		}
-	}
-}
-
-func TestMixedBasicsHasMultipleOperations(t *testing.T) {
-	mode, ok := Get(IDMixedBasics)
-	if !ok {
-		t.Fatal("Mixed Basics mode not found")
-	}
-	if mode.IsSingleOperation() {
-		t.Error("Mixed Basics should have multiple operations")
-	}
-	if len(mode.Operations) != 4 {
-		t.Errorf("Mixed Basics should have 4 operations, got %d", len(mode.Operations))
-	}
-}
-
-func TestMixedPowersHasMultipleOperations(t *testing.T) {
-	mode, ok := Get(IDMixedPowers)
-	if !ok {
-		t.Fatal("Mixed Powers mode not found")
-	}
-	if mode.IsSingleOperation() {
-		t.Error("Mixed Powers should have multiple operations")
-	}
-	if len(mode.Operations) != 4 {
-		t.Errorf("Mixed Powers should have 4 operations, got %d", len(mode.Operations))
-	}
-}
-
-func TestMixedAdvancedHasMultipleOperations(t *testing.T) {
-	mode, ok := Get(IDMixedAdvanced)
-	if !ok {
-		t.Fatal("Mixed Advanced mode not found")
-	}
-	if mode.IsSingleOperation() {
-		t.Error("Mixed Advanced should have multiple operations")
-	}
-	if len(mode.Operations) != 4 {
-		t.Errorf("Mixed Advanced should have 4 operations, got %d", len(mode.Operations))
-	}
-}
-
-func TestAnythingGoesHasAllOperations(t *testing.T) {
-	mode, ok := Get(IDAnythingGoes)
-	if !ok {
-		t.Fatal("Anything Goes mode not found")
-	}
-	if mode.IsSingleOperation() {
-		t.Error("Anything Goes should have multiple operations")
-	}
-	if len(mode.Operations) != 12 {
-		t.Errorf("Anything Goes should have 12 operations, got %d", len(mode.Operations))
 	}
 }
 
@@ -148,17 +83,6 @@ func TestModeCategoryString(t *testing.T) {
 	}
 	if CategoryChallenge.String() != "Challenge" {
 		t.Errorf("expected Challenge, got %s", CategoryChallenge.String())
-	}
-}
-
-func TestModeOperationNames(t *testing.T) {
-	mode, ok := Get(IDMixedBasics)
-	if !ok {
-		t.Fatal("Mixed Basics mode not found")
-	}
-	names := mode.OperationNames()
-	if len(names) != 4 {
-		t.Errorf("expected 4 operation names, got %d", len(names))
 	}
 }
 
@@ -213,14 +137,6 @@ func TestAllModesHaveDefaultDifficulty(t *testing.T) {
 	for _, mode := range All() {
 		if !validDifficulties[mode.DefaultDifficulty] {
 			t.Errorf("mode %q has invalid default difficulty: %v", mode.Name, mode.DefaultDifficulty)
-		}
-	}
-}
-
-func TestAllModesHaveOperations(t *testing.T) {
-	for _, mode := range All() {
-		if len(mode.Operations) == 0 {
-			t.Errorf("mode %q has no operations", mode.Name)
 		}
 	}
 }

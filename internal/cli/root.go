@@ -10,8 +10,8 @@ import (
 	"github.com/gurselcakar/arithmego/internal/modes"
 	"github.com/gurselcakar/arithmego/internal/ui"
 
-	// Register operations (must come before modes.RegisterPresets)
-	_ "github.com/gurselcakar/arithmego/internal/game/operations"
+	// Register generators (must come before modes.RegisterPresets)
+	_ "github.com/gurselcakar/arithmego/internal/game/gen"
 )
 
 // Version info - set via ldflags during build

@@ -458,64 +458,6 @@ func TestGetSessionsByFilter(t *testing.T) {
 	}
 }
 
-func TestGetAllModes(t *testing.T) {
-	stats := &storage.Statistics{
-		Sessions: []storage.SessionRecord{
-			{Mode: "Addition"},
-			{Mode: "Multiplication"},
-			{Mode: "Addition"},
-			{Mode: "Mixed Basics"},
-		},
-	}
-
-	modes := GetAllModes(stats)
-
-	if len(modes) != 3 {
-		t.Errorf("len(modes) = %d, want 3", len(modes))
-	}
-
-	// Should be sorted
-	expected := []string{"Addition", "Mixed Basics", "Multiplication"}
-	for i, m := range modes {
-		if m != expected[i] {
-			t.Errorf("modes[%d] = %s, want %s", i, m, expected[i])
-		}
-	}
-}
-
-func TestGetAllOperations(t *testing.T) {
-	stats := &storage.Statistics{
-		Sessions: []storage.SessionRecord{
-			{
-				Questions: []storage.QuestionRecord{
-					{Operation: "Addition"},
-					{Operation: "Multiplication"},
-				},
-			},
-			{
-				Questions: []storage.QuestionRecord{
-					{Operation: "Addition"},
-					{Operation: "Division"},
-				},
-			},
-		},
-	}
-
-	ops := GetAllOperations(stats)
-
-	if len(ops) != 3 {
-		t.Errorf("len(ops) = %d, want 3", len(ops))
-	}
-
-	// Should be sorted
-	expected := []string{"Addition", "Division", "Multiplication"}
-	for i, op := range ops {
-		if op != expected[i] {
-			t.Errorf("ops[%d] = %s, want %s", i, op, expected[i])
-		}
-	}
-}
-
 func TestGetOperationsByCategory(t *testing.T) {
 	stats := &storage.Statistics{
 		Sessions: []storage.SessionRecord{

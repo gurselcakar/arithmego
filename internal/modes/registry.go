@@ -23,15 +23,3 @@ func All() []*Mode {
 	}
 	return modes
 }
-
-// ByCategory returns modes filtered by category.
-func ByCategory(cat ModeCategory) []*Mode {
-	var modes []*Mode
-	for _, id := range orderedIDs {
-		m := registry[id]
-		if m.Category == cat {
-			modes = append(modes, m)
-		}
-	}
-	return modes
-}

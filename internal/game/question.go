@@ -1,11 +1,14 @@
 package game
 
+import "github.com/gurselcakar/arithmego/internal/game/expr"
+
 // Question represents a single arithmetic question.
 type Question struct {
-	Operands  []int
-	Operation Operation
-	Answer    int
-	Display   string
+	Expression expr.Expr // The expression tree
+	Key        string    // Canonical form for dedup
+	OpLabel    string    // Mode name for statistics: "Addition", "Mixed Basics"
+	Answer     int
+	Display    string
 }
 
 // CheckAnswer validates a user's answer.

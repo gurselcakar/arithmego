@@ -13,8 +13,8 @@ type Mode struct {
 	Name        string
 	Description string
 
-	// Operations included in this mode
-	Operations []game.Operation
+	// Generator label — maps to a registered generator in game/gen
+	GeneratorLabel string
 
 	// Defaults (can be overridden at launch)
 	DefaultDifficulty game.Difficulty
@@ -42,18 +42,4 @@ func (c ModeCategory) String() string {
 	default:
 		return "Unknown"
 	}
-}
-
-// IsSingleOperation returns true if the mode uses only one operation.
-func (m Mode) IsSingleOperation() bool {
-	return len(m.Operations) == 1
-}
-
-// OperationNames returns the names of all operations in the mode.
-func (m Mode) OperationNames() []string {
-	names := make([]string, len(m.Operations))
-	for i, op := range m.Operations {
-		names[i] = op.Name()
-	}
-	return names
 }
