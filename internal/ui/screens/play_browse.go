@@ -29,11 +29,6 @@ var categoryModes = map[string][]string{
 	"Mixed":    {modes.IDMixedBasics, modes.IDMixedPowers, modes.IDMixedAdvanced, modes.IDAnythingGoes},
 }
 
-// Layout constants
-const (
-	titleHeight = 2 // title line + blank line
-)
-
 // PlayBrowseModel represents the Mode Browser screen (Step 1 of play flow).
 type PlayBrowseModel struct {
 	width  int
@@ -194,11 +189,8 @@ func (m PlayBrowseModel) View() string {
 	}
 
 	hints := m.getHints()
-	title := lipgloss.Place(m.width, 1, lipgloss.Center, lipgloss.Center, styles.Logo.Render("PLAY"))
 
 	return lipgloss.JoinVertical(lipgloss.Left,
-		title,
-		"",
 		m.viewport.View(),
 		lipgloss.Place(m.width, components.HintsHeight, lipgloss.Center, lipgloss.Center, hints),
 	)
@@ -242,7 +234,7 @@ func (m *PlayBrowseModel) SetSize(width, height int) {
 
 // calculateViewportHeight returns the viewport height.
 func (m PlayBrowseModel) calculateViewportHeight() int {
-	viewportHeight := m.height - components.HintsHeight - titleHeight
+	viewportHeight := m.height - components.HintsHeight
 	if viewportHeight < 1 {
 		viewportHeight = 1
 	}
@@ -263,7 +255,21 @@ func (m *PlayBrowseModel) updateViewportContent() {
 func (m PlayBrowseModel) renderContent() string {
 	var lines []string
 
+	// Title
+	title := lipgloss.Place(m.width, 1, lipgloss.Center, lipgloss.Center, styles.Logo.Render("PLAY"))
+	lines = append(lines, title)
+	lines = append(lines, "")
+
 	lines = append(lines, m.renderCategorizedModes()...)
+
+	// Vertically center content if it fits within viewport
+	contentHeight := len(lines)
+	viewportHeight := m.calculateViewportHeight()
+	if contentHeight < viewportHeight {
+		topPadding := (viewportHeight - contentHeight) / 2
+		paddingLines := make([]string, topPadding)
+		lines = append(paddingLines, lines...)
+	}
 
 	return strings.Join(lines, "\n")
 }
