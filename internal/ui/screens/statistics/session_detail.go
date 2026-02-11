@@ -130,8 +130,11 @@ func RenderSessionSummaryContent(session storage.SessionRecord, width int) strin
 	b.WriteString(styles.Dim.Render("────────────"))
 	b.WriteString("\n")
 
-	if len(mistakes) == 0 {
+	if len(mistakes) == 0 && session.QuestionsAttempted > 0 {
 		b.WriteString(styles.Correct.Render("Perfect session - no mistakes!"))
+		b.WriteString("\n")
+	} else if len(mistakes) == 0 {
+		b.WriteString(styles.Dim.Render("No questions attempted"))
 		b.WriteString("\n")
 	} else {
 		// Show all mistakes - viewport handles scrolling

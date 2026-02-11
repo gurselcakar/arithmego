@@ -59,7 +59,6 @@ make lint     # Run linter
 ## Docs
 
 - [Architecture](docs/ARCHITECTURE.md) — Tech stack and project structure
-- [Contributing](docs/CONTRIBUTING.md) — Guidelines for contributors
 - [Website](docs/WEBSITE.md) — Hugo site structure and content editing
 
 ## License

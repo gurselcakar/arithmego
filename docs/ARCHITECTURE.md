@@ -17,10 +17,12 @@ cmd/arithmego/main.go     Entry point
 internal/
   cli/                    Cobra commands
   game/                   Core game logic
-    operations/           Operation implementations
-  modes/                  Game mode definitions
+    expr/                 Expression tree (nodes, eval, format, key)
+    gen/                  16 question generators + framework
+  modes/                  Game mode definitions (Sprint / Challenge)
   ui/                     Bubble Tea UI layer
     screens/              Screen models
+      statistics/         Statistics sub-screens
     components/           Reusable UI components
     styles/               Styling constants
   storage/                Local persistence
@@ -38,29 +40,39 @@ The codebase enforces strict boundaries between layers:
 - **storage/** handles persistence with no game logic imports
 - **ui/** depends on game/ and storage/ but they don't depend on it
 
-### Interface-Based Operations
+### Expression Tree Model
 
-Operations (addition, subtraction, multiplication, etc.) implement a common interface:
+Questions are built using an expression tree (`game/expr/`):
+
+- **Node types**: `Num`, `BinOp`, `Paren`, `UnaryPrefix`, `UnarySuffix`, `Pow`
+- **Evaluation**: `Eval()` computes the integer result
+- **Formatting**: `Format()` renders with Unicode math symbols (×, ÷, √, ², ³)
+- **Deduplication**: `Key()` produces a canonical string for duplicate detection
+
+### Generator-Based Question System
+
+Generators implement a common interface (defined in `game/pool.go`):
 
 ```go
-type Operation interface {
-    Generate(difficulty int) Equation
-    Apply(a, b int) int
-    ScoreDifficulty(equation Equation) int
+type Generator interface {
+    Generate(diff Difficulty) *Question
+    Label() string
 }
 ```
 
-This enables:
-- Easy addition of new operation types
-- Consistent difficulty scaling
-- Composable mixed-mode games
+Each of the 16 generators uses weighted patterns per difficulty level. Generators self-register via `init()` in `gen/registry.go`. This enables:
+- Easy addition of new question types
+- Consistent difficulty scaling via pattern weights
+- Composable mixed-mode generators that delegate to single-operation generators
+- Multi-operand expressions (e.g., 3+4+5) and PEMDAS-aware expressions (e.g., 5+3×2)
 
-### Cognitive Difficulty Scoring
+### Question Pool
 
-Difficulty is based on cognitive complexity rather than just number magnitude. Factors include:
-- Number of digits
-- Carrying/borrowing requirements
-- Mental calculation steps
+`QuestionPool` handles batch pre-generation of 50 questions at a time with session-level deduplication via expression keys. The pool auto-refills when exhausted.
+
+### Difficulty Levels
+
+Five difficulty levels (Beginner, Easy, Medium, Hard, Expert) affect number ranges and expression complexity via weighted pattern selection. Each generator defines its own pattern set.
 
 ## UI Architecture
 
@@ -79,10 +91,12 @@ A central `App` model manages screen transitions:
 ```
 App
  ├── Menu
- ├── Play Browse → Play Config → Game → Results
+ ├── Play Browse → Play Config → Game → Pause / Results
  ├── Practice
- ├── Statistics
- └── Settings
+ ├── Statistics → Session Detail
+ ├── Settings
+ ├── Onboarding → Feature Tour
+ └── Quit Confirm
 ```
 
 Each screen is a self-contained Bubble Tea model.
@@ -93,6 +107,7 @@ Each screen is a self-contained Bubble Tea model.
 |---------|-------------|
 | `arithmego` | Opens the TUI main menu |
 | `arithmego play` | Quick play with last used settings |
+| `arithmego play [mode]` | Jump to config for a specific mode |
 | `arithmego statistics` | View performance statistics |
 | `arithmego update` | Check for updates |
 | `arithmego version` | Show version information |
