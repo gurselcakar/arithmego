@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html lang="en">
+{{ partial "head.html" . }}
+<body>
+  {{ partial "navbar.html" . }}
+  <main class="error-page">
+    <span class="error-code">404</span>
+    <p class="error-message">This page doesn't exist.</p>
+    <a href="/" class="error-link">Go home</a>
+  </main>
+  {{ partial "footer.html" . }}
+</body>
+</html>
