@@ -171,11 +171,11 @@ func (m QuitConfirmModel) View() string {
 	}
 
 	// Hints
-	hints := components.RenderHintsStructured([]components.Hint{
+	hints := components.RenderHintsResponsive([]components.Hint{
 		{Key: "Y/N", Action: "Quick Select"},
 		{Key: "↑↓", Action: "Navigate"},
 		{Key: "Enter", Action: "Confirm"},
-	})
+	}, m.width)
 
 	// Build main content (without hints)
 	mainContent := lipgloss.JoinVertical(lipgloss.Center,

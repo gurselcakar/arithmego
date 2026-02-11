@@ -141,14 +141,14 @@ func (m ResultsModel) View() string {
 	// Hints based on game type
 	var hints string
 	if m.isFirstGame {
-		hints = components.RenderHintsStructured([]components.Hint{
+		hints = components.RenderHintsResponsive([]components.Hint{
 			{Key: "→", Action: "Continue"},
-		})
+		}, m.width)
 	} else {
-		hints = components.RenderHintsStructured([]components.Hint{
+		hints = components.RenderHintsResponsive([]components.Hint{
 			{Key: "M", Action: "Menu"},
 			{Key: "↵", Action: "Play"},
-		})
+		}, m.width)
 	}
 
 	// Save error warning (if any)

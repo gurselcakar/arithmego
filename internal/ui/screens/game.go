@@ -341,18 +341,18 @@ func (m GameModel) View() string {
 	// Hints - differ based on input method
 	var hints string
 	if m.inputMethod == components.InputMultipleChoice {
-		hints = components.RenderHintsStructured([]components.Hint{
+		hints = components.RenderHintsResponsive([]components.Hint{
 			{Key: "1-4", Action: "Select"},
 			{Key: "S", Action: "Skip"},
 			{Key: "P", Action: "Pause"},
 			{Key: "Q", Action: "Quit"},
-		})
+		}, m.width)
 	} else {
-		hints = components.RenderHintsStructured([]components.Hint{
+		hints = components.RenderHintsResponsive([]components.Hint{
 			{Key: "S", Action: "Skip"},
 			{Key: "P", Action: "Pause"},
 			{Key: "Q", Action: "Quit"},
-		})
+		}, m.width)
 	}
 
 	// Center content (milestone is now shown above score in top row)
