@@ -200,7 +200,7 @@ func computeWeeklyData(sessions []storage.SessionRecord) []WeeklyData {
 	weekGroups := make(map[string][]storage.SessionRecord)
 	for _, s := range sessions {
 		// Get the Monday of the week containing this session
-		weekStart := s.Timestamp.Truncate(24 * time.Hour)
+		weekStart := time.Date(s.Timestamp.Year(), s.Timestamp.Month(), s.Timestamp.Day(), 0, 0, 0, 0, s.Timestamp.Location())
 		for weekStart.Weekday() != time.Monday {
 			weekStart = weekStart.AddDate(0, 0, -1)
 		}
@@ -376,7 +376,8 @@ func computePlayStreak(sessions []storage.SessionRecord) int {
 	// Maximum 365 days to prevent infinite loops
 	const maxDays = 365
 	streak := 0
-	today := time.Now().Truncate(24 * time.Hour)
+	now := time.Now()
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
 
 	for i := 0; i < maxDays; i++ {
 		dayKey := today.Format("2006-01-02")

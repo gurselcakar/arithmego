@@ -62,7 +62,8 @@ func TestComputeTrendData_Empty(t *testing.T) {
 }
 
 func TestComputeTrendData_SingleDay(t *testing.T) {
-	now := time.Now()
+	// Use a fixed time at noon to avoid midnight boundary issues in CI
+	now := time.Date(2025, 6, 15, 12, 0, 0, 0, time.UTC)
 	stats := &storage.Statistics{
 		Sessions: []storage.SessionRecord{
 			{
@@ -193,7 +194,7 @@ func TestComputeTrendData_SessionsPerWeek(t *testing.T) {
 	stats := &storage.Statistics{
 		Sessions: []storage.SessionRecord{
 			{Timestamp: monday},
-			{Timestamp: monday.Add(24 * time.Hour)},     // Tuesday same week
+			{Timestamp: monday.AddDate(0, 0, 1)},        // Tuesday same week
 			{Timestamp: monday.AddDate(0, 0, -7)},       // Previous week
 			{Timestamp: monday.AddDate(0, 0, -7)},       // Previous week
 			{Timestamp: monday.AddDate(0, 0, -7)},       // Previous week
@@ -473,9 +474,9 @@ func TestComputePlayStreak_MultipleSameDay(t *testing.T) {
 	now := time.Now()
 	sessions := []storage.SessionRecord{
 		{Timestamp: now},
-		{Timestamp: now.Add(-2 * time.Hour)}, // Same day
+		{Timestamp: now.Add(-1 * time.Minute)}, // Same day
 		{Timestamp: now.AddDate(0, 0, -1)},
-		{Timestamp: now.AddDate(0, 0, -1).Add(-3 * time.Hour)}, // Same day
+		{Timestamp: now.AddDate(0, 0, -1).Add(-1 * time.Minute)}, // Same day
 	}
 
 	streak := computePlayStreak(sessions)
@@ -504,8 +505,8 @@ func TestComputeWeeklyData_SingleWeek(t *testing.T) {
 
 	sessions := []storage.SessionRecord{
 		{Timestamp: monday},
-		{Timestamp: monday.Add(24 * time.Hour)},
-		{Timestamp: monday.Add(48 * time.Hour)},
+		{Timestamp: monday.AddDate(0, 0, 1)},
+		{Timestamp: monday.AddDate(0, 0, 2)},
 	}
 
 	weekly := computeWeeklyData(sessions)
