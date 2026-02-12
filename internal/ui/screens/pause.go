@@ -51,11 +51,11 @@ func (m PauseModel) Update(msg tea.Msg) (PauseModel, tea.Cmd) {
 
 	case tea.KeyMsg:
 		switch msg.String() {
-		case "enter":
+		case "enter", "p":
 			return m, func() tea.Msg {
 				return ResumeMsg{Session: m.session}
 			}
-		case "q":
+		case "q", "esc":
 			return m, func() tea.Msg {
 				return QuitConfirmMsg{Session: m.session}
 			}
@@ -75,8 +75,8 @@ func (m PauseModel) View() string {
 
 	// Hints
 	hints := components.RenderHintsResponsive([]components.Hint{
-		{Key: "Q", Action: "Quit"},
-		{Key: "Enter", Action: "Resume"},
+		{Key: "Esc", Action: "Quit"},
+		{Key: "P", Action: "Resume"},
 	}, m.width)
 
 	// Main content (without hints)

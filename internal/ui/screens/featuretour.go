@@ -13,8 +13,8 @@ import (
 type FeatureTourStep int
 
 const (
-	StepPractice FeatureTourStep = iota
-	StepModes
+	StepModes FeatureTourStep = iota
+	StepPractice
 	StepStatistics
 	StepFinale
 )
@@ -36,7 +36,7 @@ type FeatureTourModel struct {
 // NewFeatureTour creates a new feature tour model.
 func NewFeatureTour() FeatureTourModel {
 	return FeatureTourModel{
-		step:          StepPractice,
+		step:          StepModes,
 		viewport:      viewport.New(0, 0),
 		viewportReady: false,
 	}
@@ -59,7 +59,7 @@ func (m FeatureTourModel) Update(msg tea.Msg) (FeatureTourModel, tea.Cmd) {
 
 	case tea.KeyMsg:
 		switch msg.String() {
-		case "esc", "ctrl+c", "q":
+		case "ctrl+c":
 			return m, tea.Quit
 		case "enter", "right", "l":
 			return m.advance()
@@ -87,11 +87,11 @@ func (m FeatureTourModel) Update(msg tea.Msg) (FeatureTourModel, tea.Cmd) {
 // advance moves to the next step or completes the tour.
 func (m FeatureTourModel) advance() (FeatureTourModel, tea.Cmd) {
 	switch m.step {
-	case StepPractice:
-		m.step = StepModes
+	case StepModes:
+		m.step = StepPractice
 		m.updateViewportContent()
 		return m, nil
-	case StepModes:
+	case StepPractice:
 		m.step = StepStatistics
 		m.updateViewportContent()
 		return m, nil
@@ -108,14 +108,13 @@ func (m FeatureTourModel) advance() (FeatureTourModel, tea.Cmd) {
 // back returns to the previous step.
 func (m *FeatureTourModel) back() {
 	switch m.step {
-	case StepModes:
-		m.step = StepPractice
-	case StepStatistics:
+	case StepPractice:
 		m.step = StepModes
-	case StepFinale:
-		m.step = StepStatistics
+	case StepStatistics:
+		m.step = StepPractice
 	}
-	// StepPractice has no back
+	// StepModes has no back (first step)
+	// StepFinale back is blocked in Update()
 }
 
 // skip jumps to the finale screen (skip always lands on finale before menu).
@@ -151,14 +150,13 @@ func (m FeatureTourModel) View() string {
 // getProgressForStep returns the progress dots for the current step.
 func (m FeatureTourModel) getProgressForStep() string {
 	switch m.step {
-	case StepPractice:
-		return components.ProgressDotsColored(1, featureTourTotalSteps)
 	case StepModes:
+		return components.ProgressDotsColored(1, featureTourTotalSteps)
+	case StepPractice:
 		return components.ProgressDotsColored(2, featureTourTotalSteps)
 	case StepStatistics:
 		return components.ProgressDotsColored(3, featureTourTotalSteps)
 	case StepFinale:
-		// No progress dots on finale screen
 		return ""
 	default:
 		return ""
@@ -168,7 +166,7 @@ func (m FeatureTourModel) getProgressForStep() string {
 // getHintsForStep returns the appropriate hints for the current step.
 func (m FeatureTourModel) getHintsForStep() string {
 	switch m.step {
-	case StepPractice:
+	case StepModes:
 		// First step: no back button
 		return components.RenderHintsResponsive([]components.Hint{
 			{Key: "S", Action: "Skip"},
@@ -232,10 +230,10 @@ func (m *FeatureTourModel) updateViewportContent() {
 // getViewportContent returns the content for the current step.
 func (m FeatureTourModel) getViewportContent() string {
 	switch m.step {
-	case StepPractice:
-		return m.renderPracticeContent()
 	case StepModes:
 		return m.renderModesContent()
+	case StepPractice:
+		return m.renderPracticeContent()
 	case StepStatistics:
 		return m.renderStatisticsContent()
 	case StepFinale:
@@ -245,36 +243,11 @@ func (m FeatureTourModel) getViewportContent() string {
 	}
 }
 
-// renderPracticeContent renders the practice mode introduction.
-func (m FeatureTourModel) renderPracticeContent() string {
-	title := styles.Logo.Render("PRACTICE MODE")
-
-	description := lipgloss.JoinVertical(lipgloss.Center,
-		styles.Subtle.Render("Want to improve without the clock ticking?"),
-		"",
-		"Practice lets you focus on specific",
-		"operations at your own pace.",
-	)
-
-	content := lipgloss.JoinVertical(lipgloss.Center,
-		title,
-		"",
-		"",
-		"",
-		description,
-	)
-
-	if m.width > 0 && m.viewportReady {
-		return lipgloss.Place(m.width, m.viewport.Height, lipgloss.Center, lipgloss.Center, content)
-	}
-	return content
-}
-
 // renderModesContent renders the game modes introduction with grouped list.
 func (m FeatureTourModel) renderModesContent() string {
 	title := styles.Logo.Render("GAME MODES")
 
-	subtitle := styles.Subtle.Render("Here's what you can explore:")
+	subtitle := styles.Subtle.Render("16 modes. Two categories. Pick your challenge.")
 
 	// Build the grouped modes box
 	boxStyle := lipgloss.NewStyle().
@@ -311,21 +284,24 @@ func (m FeatureTourModel) renderModesContent() string {
 	)
 
 	if m.width > 0 && m.viewportReady {
-		return lipgloss.Place(m.width, m.viewport.Height, lipgloss.Center, lipgloss.Center, content)
+		styled := lipgloss.NewStyle().MarginTop(titleTopPadding(m.viewport.Height)).Render(content)
+		return lipgloss.Place(m.width, m.viewport.Height, lipgloss.Center, lipgloss.Top, styled)
 	}
 	return content
 }
 
-// renderStatisticsContent renders the statistics introduction.
-func (m FeatureTourModel) renderStatisticsContent() string {
-	title := styles.Logo.Render("STATISTICS")
+// renderPracticeContent renders the practice mode introduction.
+func (m FeatureTourModel) renderPracticeContent() string {
+	title := styles.Logo.Render("PRACTICE MODE")
 
 	description := lipgloss.JoinVertical(lipgloss.Center,
-		styles.Subtle.Render("Track your progress over time."),
+		styles.Subtle.Render("No timer. No pressure."),
 		"",
-		"See your accuracy, best scores, and",
-		"how you're improving at each mode.",
+		"Pick any operation and practice",
+		"at your own pace.",
 	)
+
+	preview := m.renderPracticePreview()
 
 	content := lipgloss.JoinVertical(lipgloss.Center,
 		title,
@@ -333,38 +309,109 @@ func (m FeatureTourModel) renderStatisticsContent() string {
 		"",
 		"",
 		description,
+		"",
+		"",
+		preview,
 	)
 
 	if m.width > 0 && m.viewportReady {
-		return lipgloss.Place(m.width, m.viewport.Height, lipgloss.Center, lipgloss.Center, content)
+		styled := lipgloss.NewStyle().MarginTop(titleTopPadding(m.viewport.Height)).Render(content)
+		return lipgloss.Place(m.width, m.viewport.Height, lipgloss.Center, lipgloss.Top, styled)
 	}
 	return content
 }
 
-// renderFinaleContent renders the finale screen with logo, tagline, and personal note.
-func (m FeatureTourModel) renderFinaleContent() string {
-	logo := components.LogoColoredForWidth(m.width)
-	logoSeparator := styles.Dim.Render(components.LogoSeparator())
-	tagline := components.Tagline()
+// renderPracticePreview renders a mock preview of the practice screen.
+func (m FeatureTourModel) renderPracticePreview() string {
+	previewBoxWidth := min(m.width-4, 34)
 
-	// Personal note
-	noteSeparator := styles.Dim.Render("─────────────────")
-	quote := styles.Tagline.Render("\"In a world of instant answers, take a moment to think.\"")
-	byLine := styles.Tagline.Render("by @gurselcakar")
-	claudeLine := styles.Tagline.Render("+ Claude Code")
+	boxStyle := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color("8")).
+		Width(previewBoxWidth)
+
+	centerStyle := lipgloss.NewStyle().Width(previewBoxWidth).Align(lipgloss.Center)
+
+	header := centerStyle.Render(styles.Dim.Render("Basic · Addition · Medium"))
+	question := centerStyle.Render(styles.Bold.Render("15 + 8 = ?"))
+	input := centerStyle.Render(styles.Dim.Render("> ") + styles.Accent.Render("23") + styles.Dim.Render("█"))
+
+	inner := lipgloss.JoinVertical(lipgloss.Left,
+		header,
+		"",
+		question,
+		input,
+		"",
+	)
+
+	return boxStyle.Render(inner)
+}
+
+// renderStatisticsContent renders the statistics introduction.
+func (m FeatureTourModel) renderStatisticsContent() string {
+	title := styles.Logo.Render("STATISTICS")
+
+	description := lipgloss.JoinVertical(lipgloss.Center,
+		styles.Subtle.Render("Every session counts."),
+		"",
+		"Track accuracy, streaks, and response",
+		"times across all modes.",
+		"",
+		styles.Dim.Render("Dive into history, trends, and session details."),
+	)
+
+	preview := m.renderStatisticsPreview()
 
 	content := lipgloss.JoinVertical(lipgloss.Center,
-		logo,
-		"",
-		logoSeparator,
-		"",
-		tagline,
+		title,
 		"",
 		"",
-		noteSeparator,
 		"",
-		quote,
+		description,
 		"",
+		"",
+		preview,
+	)
+
+	if m.width > 0 && m.viewportReady {
+		styled := lipgloss.NewStyle().MarginTop(titleTopPadding(m.viewport.Height)).Render(content)
+		return lipgloss.Place(m.width, m.viewport.Height, lipgloss.Center, lipgloss.Top, styled)
+	}
+	return content
+}
+
+// renderStatisticsPreview renders a mock preview of the statistics dashboard.
+func (m FeatureTourModel) renderStatisticsPreview() string {
+	previewBoxWidth := min(m.width-4, 34)
+
+	boxStyle := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color("8")).
+		Width(previewBoxWidth).
+		Padding(0, 1)
+
+	// Mock operation rows matching real dashboard format: symbol Name  XX%  bar
+	row1 := "+  Addition        " + styles.Correct.Render("92%") + "  " + styles.Correct.Render("█████████") + styles.Dim.Render("░")
+	row2 := "−  Subtraction     " + styles.Correct.Render("85%") + "  " + styles.Correct.Render("████████") + styles.Dim.Render("░░")
+	row3 := "×  Multiplication  " + "68%" + "  " + "██████" + styles.Dim.Render("░░░░")
+
+	inner := lipgloss.JoinVertical(lipgloss.Left,
+		"",
+		row1,
+		row2,
+		row3,
+		"",
+	)
+
+	return boxStyle.Render(inner)
+}
+
+// renderFinaleContent renders the finale screen with creator attribution.
+func (m FeatureTourModel) renderFinaleContent() string {
+	byLine := styles.Dim.Render("A game by ") + styles.Accent.Render("@gurselcakar")
+	claudeLine := styles.Dim.Render("+ Claude Code")
+
+	content := lipgloss.JoinVertical(lipgloss.Center,
 		byLine,
 		claudeLine,
 	)

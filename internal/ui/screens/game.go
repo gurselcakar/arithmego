@@ -206,11 +206,11 @@ func (m GameModel) Update(msg tea.Msg) (GameModel, tea.Cmd) {
 			return m, nil
 		case "s", " ":
 			return m.skipQuestion()
-		case "p", "esc":
+		case "p":
 			return m, func() tea.Msg {
 				return PauseMsg{Session: m.session}
 			}
-		case "q":
+		case "q", "esc":
 			return m, func() tea.Msg {
 				return QuitConfirmMsg{Session: m.session}
 			}
@@ -345,13 +345,13 @@ func (m GameModel) View() string {
 			{Key: "1-4", Action: "Select"},
 			{Key: "S", Action: "Skip"},
 			{Key: "P", Action: "Pause"},
-			{Key: "Q", Action: "Quit"},
+			{Key: "Esc", Action: "Quit"},
 		}, m.width)
 	} else {
 		hints = components.RenderHintsResponsive([]components.Hint{
 			{Key: "S", Action: "Skip"},
 			{Key: "P", Action: "Pause"},
-			{Key: "Q", Action: "Quit"},
+			{Key: "Esc", Action: "Quit"},
 		}, m.width)
 	}
 

@@ -135,7 +135,7 @@ func (m ResultsModel) View() string {
 	// Intro message for first game (before feature tour)
 	var introMessage string
 	if m.isFirstGame {
-		introMessage = styles.Tagline.Render("Let's see what else you can do.")
+		introMessage = styles.Tagline.Render("There's more to explore.")
 	}
 
 	// Hints based on game type

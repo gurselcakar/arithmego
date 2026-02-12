@@ -16,7 +16,8 @@ const (
 // Config stores user preferences and Quick Play state.
 type Config struct {
 	// First-run state
-	Onboarded bool `json:"onboarded,omitempty"`
+	Onboarded     bool `json:"onboarded,omitempty"`
+	TourCompleted bool `json:"tour_completed,omitempty"`
 
 	// Defaults (applied to Launch screen)
 	DefaultDifficulty string `json:"default_difficulty,omitempty"`

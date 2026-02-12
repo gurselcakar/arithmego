@@ -112,9 +112,12 @@ func NewWithStartMode(startMode StartMode) *App {
 	case StartModeOnboarding:
 		app.screen = ScreenOnboarding
 	default:
-		// Default menu behavior: check onboarding status
+		// Default menu behavior: check onboarding and tour status
 		if !config.Onboarded {
 			app.screen = ScreenOnboarding
+		} else if !config.TourCompleted {
+			app.featureTourModel = screens.NewFeatureTour()
+			app.screen = ScreenFeatureTour
 		} else {
 			app.screen = ScreenMenu
 		}
@@ -614,6 +617,8 @@ func (a *App) updateFeatureTour(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Check for feature tour completion (or skip)
 	if _, ok := msg.(screens.FeatureTourCompleteMsg); ok {
 		a.isFirstGame = false
+		a.config.TourCompleted = true
+		_ = storage.SaveConfig(a.config)
 		a.rebuildMenu()
 		a.screen = ScreenMenu
 		a.session = nil

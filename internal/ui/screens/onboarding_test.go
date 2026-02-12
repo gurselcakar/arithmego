@@ -14,11 +14,11 @@ func TestNewOnboarding(t *testing.T) {
 	if m.step != StepWelcome {
 		t.Errorf("expected step to be StepWelcome, got %v", m.step)
 	}
-	if m.durationIndex != 1 {
-		t.Errorf("expected durationIndex to be 1 (60s), got %d", m.durationIndex)
+	if m.durationIndex != 0 {
+		t.Errorf("expected durationIndex to be 0 (30s), got %d", m.durationIndex)
 	}
-	if m.difficultyIndex != 1 {
-		t.Errorf("expected difficultyIndex to be 1 (Easy), got %d", m.difficultyIndex)
+	if m.difficultyIndex != 0 {
+		t.Errorf("expected difficultyIndex to be 0 (Beginner), got %d", m.difficultyIndex)
 	}
 	if m.operationIndex != 0 {
 		t.Errorf("expected operationIndex to be 0 (Addition), got %d", m.operationIndex)

@@ -22,7 +22,7 @@ const (
 	StepReady
 )
 
-const totalSteps = 5 // Duration, Difficulty, Operation, InputMode, Ready (Welcome has no dots)
+const totalSteps = 4 // Duration, Difficulty, Operation, InputMode (Welcome and Ready have no dots)
 
 // OnboardingCompleteMsg is sent when onboarding is completed with selections.
 type OnboardingCompleteMsg struct {
@@ -92,8 +92,8 @@ type OnboardingModel struct {
 func NewOnboarding() OnboardingModel {
 	return OnboardingModel{
 		step:            StepWelcome,
-		durationIndex:   1, // Default: 60s
-		difficultyIndex: 1, // Default: Easy
+		durationIndex:   0, // Default: 30s
+		difficultyIndex: 0, // Default: Beginner
 		operationIndex:  0, // Default: Addition
 		inputModeIndex:  0, // Default: Typing
 		viewport:        viewport.New(0, 0),
@@ -134,7 +134,7 @@ func (m OnboardingModel) Update(msg tea.Msg) (OnboardingModel, tea.Cmd) {
 
 	case tea.KeyMsg:
 		switch msg.String() {
-		case "esc", "ctrl+c", "q":
+		case "ctrl+c":
 			return m, tea.Quit
 		case "up", "k":
 			m.moveSelection(-1)
@@ -316,7 +316,7 @@ func (m OnboardingModel) getProgressForStep() string {
 	case StepInputMode:
 		return components.ProgressDotsColored(4, totalSteps)
 	case StepReady:
-		return components.ProgressDotsColored(5, totalSteps)
+		return "" // No progress dots on ready screen
 	default:
 		return ""
 	}
@@ -380,20 +380,28 @@ func (m *OnboardingModel) updateViewportContent() {
 	m.viewport.SetContent(content)
 }
 
+// titleTopPadding returns a consistent top padding for step content screens.
+// Uses the tallest step's content height as reference so the title stays
+// at the same position regardless of how many options a step has.
+// Shared across onboarding and feature tour for consistent positioning.
+func titleTopPadding(viewportHeight int) int {
+	// Reference: title(1) + blank(1) + subtitle(1) + blanks(3) + max options(5) = 11
+	referenceHeight := linesBeforeOptions + 5
+	padding := (viewportHeight - referenceHeight) / 2
+	if padding < 2 {
+		padding = 2
+	}
+	return padding
+}
+
 // scrollToSelection scrolls the viewport to keep the selected option visible.
 func (m *OnboardingModel) scrollToSelection() {
-	if !m.viewportReady || m.step == StepWelcome {
+	if !m.viewportReady || m.step == StepWelcome || m.step == StepReady {
 		return
 	}
 
-	optionsCount := m.maxIndexForStep() + 1
-	contentHeight := linesBeforeOptions + optionsCount
-
-	// Calculate where the content starts (centered)
-	contentStart := (m.viewport.Height - contentHeight) / 2
-	if contentStart < 0 {
-		contentStart = 0
-	}
+	// Content starts at a fixed top offset
+	contentStart := titleTopPadding(m.viewport.Height)
 
 	// Selection line within the viewport
 	selectionLine := contentStart + linesBeforeOptions + m.currentIndex()
@@ -536,6 +544,29 @@ const (
 	previewBoxHeight = 5 // Inner content height (excludes border)
 )
 
+// previewExample holds example data for the input mode preview box.
+type previewExample struct {
+	question string
+	answer   string
+	choices  [4]string // [wrong, correct, wrong, wrong]
+}
+
+// getPreviewForOperation returns a preview example matching the selected operation.
+func getPreviewForOperation(operationIndex int) previewExample {
+	switch operationIndex {
+	case 1: // Subtraction
+		return previewExample{"3 - 1 =", "2", [4]string{"1", "2", "4", "0"}}
+	case 2: // Multiplication
+		return previewExample{"2 × 3 =", "6", [4]string{"5", "6", "8", "4"}}
+	case 3: // Division
+		return previewExample{"6 ÷ 2 =", "3", [4]string{"2", "3", "4", "1"}}
+	case 4: // Mixed Basics
+		return previewExample{"2 + 3 =", "5", [4]string{"4", "5", "6", "3"}}
+	default: // Addition (0) and fallback
+		return previewExample{"1 + 1 =", "2", [4]string{"0", "2", "3", "1"}}
+	}
+}
+
 // renderInputModePreview renders a preview box showing how the selected input mode looks.
 func (m OnboardingModel) renderInputModePreview() string {
 	previewBoxWidth := min(m.width-4, 34)
@@ -547,26 +578,27 @@ func (m OnboardingModel) renderInputModePreview() string {
 		Width(previewBoxWidth).
 		Height(previewBoxHeight)
 
-	// Question on its own line (matches game screen layout)
-	question := styles.Bold.Render("1 + 1 =")
+	// Get example based on selected operation
+	example := getPreviewForOperation(m.operationIndex)
+	question := styles.Bold.Render(example.question)
 
 	var input string
 	if m.inputModeIndex == 0 {
 		// Typing preview: prompt, answer, and cursor (matches game screen)
 		prompt := styles.Dim.Render("> ")
-		answer := styles.Accent.Render("2")
+		answer := styles.Accent.Render(example.answer)
 		cursor := styles.Dim.Render("█")
 		input = prompt + answer + cursor
 	} else {
-		// Multiple choice preview: four options
+		// Multiple choice preview: four options (second is correct)
 		input = lipgloss.JoinHorizontal(lipgloss.Center,
-			styles.Dim.Render("[1] ")+"0",
+			styles.Dim.Render("[1] ")+example.choices[0],
 			"  ",
-			styles.Accent.Render("[2] ")+"2",
+			styles.Accent.Render("[2] ")+example.choices[1],
 			"  ",
-			styles.Dim.Render("[3] ")+"3",
+			styles.Dim.Render("[3] ")+example.choices[2],
 			"  ",
-			styles.Dim.Render("[4] ")+"1",
+			styles.Dim.Render("[4] ")+example.choices[3],
 		)
 	}
 
@@ -588,7 +620,7 @@ func (m OnboardingModel) renderInputModePreview() string {
 	return boxStyle.Render(content)
 }
 
-// renderStepContentWithPreview renders title, subtitle, options, and a preview centered in the viewport.
+// renderStepContentWithPreview renders title, subtitle, options, and a preview with fixed title positioning.
 func (m OnboardingModel) renderStepContentWithPreview(title, subtitle, options, preview string) string {
 	content := lipgloss.JoinVertical(lipgloss.Center,
 		title,
@@ -603,14 +635,15 @@ func (m OnboardingModel) renderStepContentWithPreview(title, subtitle, options, 
 		preview,
 	)
 
-	// Center both horizontally and vertically within viewport
+	// Fixed top positioning to keep title consistent across steps
 	if m.width > 0 && m.viewportReady {
-		return lipgloss.Place(m.width, m.viewport.Height, lipgloss.Center, lipgloss.Center, content)
+		styled := lipgloss.NewStyle().MarginTop(titleTopPadding(m.viewport.Height)).Render(content)
+		return lipgloss.Place(m.width, m.viewport.Height, lipgloss.Center, lipgloss.Top, styled)
 	}
 	return content
 }
 
-// renderStepContent renders title, subtitle, and options centered in the viewport.
+// renderStepContent renders title, subtitle, and options with fixed title positioning.
 func (m OnboardingModel) renderStepContent(title, subtitle, options string) string {
 	content := lipgloss.JoinVertical(lipgloss.Center,
 		title,
@@ -622,14 +655,15 @@ func (m OnboardingModel) renderStepContent(title, subtitle, options string) stri
 		options,
 	)
 
-	// Center both horizontally and vertically within viewport
+	// Fixed top positioning to keep title consistent across steps
 	if m.width > 0 && m.viewportReady {
-		return lipgloss.Place(m.width, m.viewport.Height, lipgloss.Center, lipgloss.Center, content)
+		styled := lipgloss.NewStyle().MarginTop(titleTopPadding(m.viewport.Height)).Render(content)
+		return lipgloss.Place(m.width, m.viewport.Height, lipgloss.Center, lipgloss.Top, styled)
 	}
 	return content
 }
 
-// renderStepContentWithNote renders title, subtitle, options, and a note centered in the viewport.
+// renderStepContentWithNote renders title, subtitle, options, and a note with fixed title positioning.
 func (m OnboardingModel) renderStepContentWithNote(title, subtitle, options, note string) string {
 	content := lipgloss.JoinVertical(lipgloss.Center,
 		title,
@@ -644,9 +678,10 @@ func (m OnboardingModel) renderStepContentWithNote(title, subtitle, options, not
 		note,
 	)
 
-	// Center both horizontally and vertically within viewport
+	// Fixed top positioning to keep title consistent across steps
 	if m.width > 0 && m.viewportReady {
-		return lipgloss.Place(m.width, m.viewport.Height, lipgloss.Center, lipgloss.Center, content)
+		styled := lipgloss.NewStyle().MarginTop(titleTopPadding(m.viewport.Height)).Render(content)
+		return lipgloss.Place(m.width, m.viewport.Height, lipgloss.Center, lipgloss.Top, styled)
 	}
 	return content
 }
@@ -698,8 +733,7 @@ func (m OnboardingModel) renderReadyContent() string {
 		controlsSection,
 	)
 
-	// Styled start instruction (dim like key hints)
-	startInstruction := styles.Dim.Render("─── Press → to Start ───")
+	startInstruction := styles.Tagline.Render("Let's see what you've got.")
 
 	// Combine all parts - title centered, info block centered as a unit
 	content := lipgloss.JoinVertical(lipgloss.Center,
@@ -712,9 +746,10 @@ func (m OnboardingModel) renderReadyContent() string {
 		startInstruction,
 	)
 
-	// Center both horizontally and vertically within viewport
+	// Fixed top positioning to keep title consistent across steps
 	if m.width > 0 && m.viewportReady {
-		return lipgloss.Place(m.width, m.viewport.Height, lipgloss.Center, lipgloss.Center, content)
+		styled := lipgloss.NewStyle().MarginTop(titleTopPadding(m.viewport.Height)).Render(content)
+		return lipgloss.Place(m.width, m.viewport.Height, lipgloss.Center, lipgloss.Top, styled)
 	}
 	return content
 }
