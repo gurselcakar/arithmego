@@ -386,17 +386,13 @@ func (m PlayConfigModel) renderContent() string {
 
 	// Preview box with sample equation
 	previewBoxWidth := min(m.width-4, 30)
-	previewContent := lipgloss.NewStyle().
-		Width(previewBoxWidth).
-		Align(lipgloss.Center).
-		Render(styles.Bold.Render(m.sampleQuestion))
-
 	previewBox := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(lipgloss.Color("8")).
 		Width(previewBoxWidth).
 		Padding(1, 2).
-		Render(previewContent)
+		Align(lipgloss.Center).
+		Render(styles.Bold.Render(m.sampleQuestion))
 
 	// Build content with better spacing
 	content := lipgloss.JoinVertical(lipgloss.Center,
