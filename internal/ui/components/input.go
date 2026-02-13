@@ -15,6 +15,7 @@ type InputModel struct {
 // NewInput creates a new input model configured for numeric entry.
 func NewInput() InputModel {
 	ti := textinput.New()
+	ti.Prompt = "= "
 	ti.Placeholder = ""
 	ti.Focus()
 	ti.CharLimit = 10

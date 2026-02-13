@@ -327,7 +327,11 @@ func (m GameModel) View() string {
 	// Question (center)
 	var question string
 	if m.session.Current != nil {
-		question = components.RenderQuestion(m.session.Current.Display)
+		if m.inputMethod == components.InputMultipleChoice {
+			question = components.RenderQuestionWithAnswer(m.session.Current.Display)
+		} else {
+			question = components.RenderQuestion(m.session.Current.Display)
+		}
 	}
 
 	// Input area

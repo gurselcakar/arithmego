@@ -432,7 +432,11 @@ func (m PracticeModel) viewPractice() string {
 	// Question (center)
 	var questionView string
 	if m.current != nil {
-		questionView = components.RenderQuestion(m.current.Display)
+		if m.inputMethod == components.InputMultipleChoice {
+			questionView = components.RenderQuestionWithAnswer(m.current.Display)
+		} else {
+			questionView = components.RenderQuestion(m.current.Display)
+		}
 	}
 
 	// Input (with red styling on error for typing mode)
