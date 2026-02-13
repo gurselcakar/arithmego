@@ -359,9 +359,11 @@ func (a *App) updatePlayConfig(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return a.startGame()
 	}
 
-	// Check for back to browse
+	// Check for back to browse — reuse existing model to preserve cursor position
 	if _, ok := msg.(screens.BackToBrowseMsg); ok {
-		return a.startPlayBrowse()
+		a.playBrowseModel.SetSize(a.width, a.height)
+		a.screen = ScreenPlayBrowse
+		return a, nil
 	}
 
 	return a, cmd
