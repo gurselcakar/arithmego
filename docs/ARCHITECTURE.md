@@ -70,6 +70,10 @@ Each of the 16 generators uses weighted patterns per difficulty level. Generator
 
 `QuestionPool` handles batch pre-generation of 50 questions at a time with session-level deduplication via expression keys. The pool auto-refills when exhausted.
 
+### Multiple Choice
+
+The `game/choices.go` module generates distractor answers for multiple choice input mode. Distractors are produced using offset-based algorithms to create plausible wrong answers.
+
 ### Difficulty Levels
 
 Five difficulty levels (Beginner, Easy, Medium, Hard, Expert) affect number ranges and expression complexity via weighted pattern selection. Each generator defines its own pattern set.
@@ -109,6 +113,7 @@ Each screen is a self-contained Bubble Tea model.
 | `arithmego play` | Quick play with last used settings |
 | `arithmego play [mode]` | Jump to config for a specific mode |
 | `arithmego statistics` | View performance statistics |
+| `arithmego settings` | Open settings |
 | `arithmego update` | Check for updates |
 | `arithmego version` | Show version information |
 

@@ -17,46 +17,32 @@ website/
   hugo.toml                    # Site config, menu, latestVersion
   content/
     _index.md                  # Landing page (tagline, features, highlights, story)
-    changelog/
-      _index.md                # Changelog list page
-      v0.1.0.md                # Release entry
     download/
-      _index.md                # Download page (Windows platform list)
+      _index.md                # Download page (platform list)
   layouts/
     index.html                 # Landing page template
+    404.html                   # Custom 404 page
     partials/
       head.html                # <head> with meta, OG tags, favicon
       navbar.html              # Sticky nav
       hero.html                # ASCII logo, tagline, install tabs
+      separator.html           # Section separator
       story.html               # "Built for the AI era" section
       features.html            # Feature list
       highlights.html          # Stat cards grid
       footer.html              # Copyright, author, license
-    changelog/
-      list.html                # Changelog list layout
-      single.html              # Individual release layout
     download/
       list.html                # Download page layout
   static/
+    CNAME                      # GitHub Pages custom domain
     css/style.css              # All styles
     js/tabs.js                 # Install tab switching
     favicon.svg                # SVG favicon
     robots.txt                 # Search engine directives
-    install.sh                 # Install script (copied from repo root)
-  archetypes/
-    changelog.md               # Template for new changelog entries
+    install.sh                 # Symlink to repo root install.sh
 ```
 
 ## Common Tasks
-
-### Add a changelog entry
-
-```bash
-cd website
-hugo new changelog/v0.2.0.md
-```
-
-Then edit `content/changelog/v0.2.0.md` with the release notes.
 
 ### Update the latest version
 
@@ -76,11 +62,3 @@ All landing page content lives in `content/_index.md`:
 - `features` — feature list items
 - `highlights` — stat cards
 - `story` — "Built for the AI era" section
-
-### Update the install script
-
-The install script at `static/install.sh` is a copy of the repo root `install.sh`. If the root script changes, copy it:
-
-```bash
-cp install.sh website/static/install.sh
-```
