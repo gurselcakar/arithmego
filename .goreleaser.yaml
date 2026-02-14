@@ -19,8 +19,6 @@ builds:
     ldflags:
       - -s -w
       - -X github.com/gurselcakar/arithmego/internal/cli.Version={{.Version}}
-      - -X github.com/gurselcakar/arithmego/internal/cli.CommitSHA={{.ShortCommit}}
-      - -X github.com/gurselcakar/arithmego/internal/cli.BuildDate={{.Date}}
 
 archives:
   - formats:

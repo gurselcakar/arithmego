@@ -14,12 +14,8 @@ import (
 	_ "github.com/gurselcakar/arithmego/internal/game/gen"
 )
 
-// Version info - set via ldflags during build
-var (
-	Version   = "dev"
-	CommitSHA = "unknown"
-	BuildDate = "unknown"
-)
+// Version is set via ldflags during build.
+var Version = "dev"
 
 var rootCmd = &cobra.Command{
 	Use:   "arithmego",

@@ -14,6 +14,5 @@
 // cube-roots, exponents, remainders, percentages, factorials, mixed-basics,
 // mixed-powers, mixed-advanced, and anything-goes.
 //
-// Version information (Version, CommitSHA, BuildDate) is injected via
-// ldflags during the build process. See the Makefile for details.
+// Version is injected via ldflags during the build process. See the Makefile.
 package cli

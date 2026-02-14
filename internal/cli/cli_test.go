@@ -16,17 +16,6 @@ func TestVersionVariables(t *testing.T) {
 		}
 	})
 
-	t.Run("default commit is unknown", func(t *testing.T) {
-		if CommitSHA != "unknown" {
-			t.Errorf("expected default CommitSHA to be 'unknown', got %q", CommitSHA)
-		}
-	})
-
-	t.Run("default build date is unknown", func(t *testing.T) {
-		if BuildDate != "unknown" {
-			t.Errorf("expected default BuildDate to be 'unknown', got %q", BuildDate)
-		}
-	})
 }
 
 func TestRootCommandSetup(t *testing.T) {
