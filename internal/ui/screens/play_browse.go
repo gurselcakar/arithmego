@@ -133,6 +133,11 @@ func (m *PlayBrowseModel) moveCursor(delta int) {
 	m.cursor = newCursor
 }
 
+// Modes returns the list of modes.
+func (m PlayBrowseModel) Modes() []*modes.Mode {
+	return m.modes
+}
+
 // selectedMode returns the currently selected mode.
 func (m PlayBrowseModel) selectedMode() *modes.Mode {
 	if m.cursor >= 0 && m.cursor < len(m.modes) {

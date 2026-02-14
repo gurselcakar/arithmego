@@ -361,6 +361,10 @@ func (a *App) updatePlayConfig(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	// Check for back to browse — reuse existing model to preserve cursor position
 	if _, ok := msg.(screens.BackToBrowseMsg); ok {
+		if len(a.playBrowseModel.Modes()) == 0 {
+			// Browse model was never initialized (e.g., CLI launched directly into config)
+			a.playBrowseModel = screens.NewPlayBrowse(a.config)
+		}
 		a.playBrowseModel.SetSize(a.width, a.height)
 		a.screen = ScreenPlayBrowse
 		return a, nil
