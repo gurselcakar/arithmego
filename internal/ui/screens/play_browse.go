@@ -125,10 +125,10 @@ func (m *PlayBrowseModel) moveCursor(delta int) {
 
 	newCursor := m.cursor + delta
 	if newCursor < 0 {
-		newCursor = 0
+		newCursor = len(m.modes) - 1
 	}
 	if newCursor >= len(m.modes) {
-		newCursor = len(m.modes) - 1
+		newCursor = 0
 	}
 	m.cursor = newCursor
 }
