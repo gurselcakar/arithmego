@@ -303,7 +303,8 @@ func (m PlayBrowseModel) renderCategorizedModes() []string {
 		modeIDs := categoryModes[catName]
 
 		// Category header
-		header := styles.Dim.Render("── " + catName + " " + strings.Repeat("─", 40))
+		separatorWidth := 44 - len(catName)
+		header := styles.Dim.Render("── " + catName + " " + strings.Repeat("─", separatorWidth))
 		lines = append(lines, padding+header)
 		lines = append(lines, "")
 
