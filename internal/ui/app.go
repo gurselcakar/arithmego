@@ -109,6 +109,9 @@ func NewWithStartMode(startMode StartMode) *App {
 	case StartModeSettings:
 		app.screen = ScreenSettings
 
+	case StartModePractice:
+		app.screen = ScreenPractice
+
 	case StartModeOnboarding:
 		app.screen = ScreenOnboarding
 	default:
@@ -147,6 +150,22 @@ func (a *App) Init() tea.Cmd {
 	// Handle statistics screen init
 	if a.screen == ScreenStatistics {
 		cmds = append(cmds, a.statisticsModel.Init())
+	}
+
+	// Handle practice screen init
+	if a.screen == ScreenPractice {
+		var practiceSettings *screens.PracticeSettings
+		if a.config.PracticeCategory != "" {
+			practiceSettings = &screens.PracticeSettings{
+				Category:    a.config.PracticeCategory,
+				Operation:   a.config.PracticeOperation,
+				Difficulty:  a.config.PracticeDifficulty,
+				InputMethod: a.config.PracticeInputMethod,
+			}
+		}
+		a.practiceModel = screens.NewPracticeWithSettings(practiceSettings)
+		a.practiceModel.SetSize(a.width, a.height)
+		cmds = append(cmds, a.practiceModel.Init())
 	}
 
 	// Check for updates if auto_update is enabled

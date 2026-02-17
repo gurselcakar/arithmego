@@ -33,6 +33,8 @@ const (
 	StartModeStatistics
 	// StartModeSettings opens the settings screen directly.
 	StartModeSettings
+	// StartModePractice opens the practice screen directly.
+	StartModePractice
 	// StartModeOnboarding starts the onboarding flow.
 	StartModeOnboarding
 )
