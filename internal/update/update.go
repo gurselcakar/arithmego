@@ -3,6 +3,7 @@ package update
 
 import (
 	"archive/tar"
+	"archive/zip"
 	"compress/gzip"
 	"encoding/json"
 	"fmt"
@@ -91,7 +92,12 @@ func DownloadAndApply(version string) error {
 	goos := runtime.GOOS
 	goarch := runtime.GOARCH
 
-	url := fmt.Sprintf(githubDownloadURL, version, goos, goarch, "tar.gz")
+	archiveExt := "tar.gz"
+	if goos == "windows" {
+		archiveExt = "zip"
+	}
+
+	url := fmt.Sprintf(githubDownloadURL, version, goos, goarch, archiveExt)
 
 	archivePath, err := downloadArchive(url)
 	if err != nil {
@@ -99,7 +105,17 @@ func DownloadAndApply(version string) error {
 	}
 	defer os.Remove(archivePath)
 
-	binaryPath, err := extractFromTarGz(archivePath)
+	binaryName := "arithmego"
+	if goos == "windows" {
+		binaryName = "arithmego.exe"
+	}
+
+	var binaryPath string
+	if goos == "windows" {
+		binaryPath, err = extractFromZip(archivePath, binaryName)
+	} else {
+		binaryPath, err = extractFromTarGz(archivePath)
+	}
 	if err != nil {
 		return fmt.Errorf("extract failed: %w", err)
 	}
@@ -172,6 +188,28 @@ func extractFromTarGz(archivePath string) (string, error) {
 	return "", fmt.Errorf("arithmego binary not found in archive")
 }
 
+// extractFromZip extracts the named binary from a zip archive.
+func extractFromZip(archivePath, binaryName string) (string, error) {
+	r, err := zip.OpenReader(archivePath)
+	if err != nil {
+		return "", fmt.Errorf("failed to open zip: %w", err)
+	}
+	defer r.Close()
+
+	for _, f := range r.File {
+		if filepath.Base(f.Name) == binaryName && !f.FileInfo().IsDir() {
+			rc, err := f.Open()
+			if err != nil {
+				return "", fmt.Errorf("failed to open file in zip: %w", err)
+			}
+			defer rc.Close()
+			return writeToTemp(rc)
+		}
+	}
+
+	return "", fmt.Errorf("%s not found in archive", binaryName)
+}
+
 // writeToTemp writes from a reader to a temporary file with executable permissions.
 func writeToTemp(r io.Reader) (string, error) {
 	tmpFile, err := os.CreateTemp("", "arithmego-bin-*")
@@ -185,9 +223,11 @@ func writeToTemp(r io.Reader) (string, error) {
 		return "", err
 	}
 
-	if err := os.Chmod(tmpFile.Name(), 0o755); err != nil {
-		os.Remove(tmpFile.Name())
-		return "", err
+	if runtime.GOOS != "windows" {
+		if err := os.Chmod(tmpFile.Name(), 0o755); err != nil {
+			os.Remove(tmpFile.Name())
+			return "", err
+		}
 	}
 
 	return tmpFile.Name(), nil
@@ -231,9 +271,11 @@ func replaceBinary(newBinaryPath string) error {
 		src.Close()
 		tmpDest.Close()
 
-		if err2 = os.Chmod(tmpDestPath, 0o755); err2 != nil {
-			os.Remove(tmpDestPath)
-			return fmt.Errorf("chmod failed: %w", err2)
+		if runtime.GOOS != "windows" {
+			if err2 = os.Chmod(tmpDestPath, 0o755); err2 != nil {
+				os.Remove(tmpDestPath)
+				return fmt.Errorf("chmod failed: %w", err2)
+			}
 		}
 
 		if err2 = os.Rename(tmpDestPath, currentPath); err2 != nil {
