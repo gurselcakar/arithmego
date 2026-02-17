@@ -33,8 +33,4 @@ highlights:
   - icon: "∞"
     label: "Practice"
     description: "No timer. Just math."
-story:
-  heading: "Built for the AI era"
-  body: "Agentic coding tools run for minutes at a time. While they think, developers reach for their phone — social media, news, anything. They come back to a finished implementation with less focus than when they left."
-  cta: "ArithmeGo fills that gap. Instead of scrolling, run a quick round. Sharpen the mental math skills you stopped using. Stay in your terminal, stay focused, and come back to your code with a warmer brain."
 ---
