@@ -40,6 +40,7 @@ website/
     favicon.svg                # SVG favicon
     robots.txt                 # Search engine directives
     install.sh                 # Symlink to repo root install.sh
+    install.ps1                # Symlink to repo root install.ps1
     video/
       onboarding.mp4           # Hero demo video
       play-menu.mp4            # Mode selection showcase

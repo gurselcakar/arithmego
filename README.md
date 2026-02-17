@@ -10,8 +10,14 @@
 
 ## Install
 
+**macOS / Linux**
 ```bash
 curl -fsSL https://arithmego.com/install.sh | bash
+```
+
+**Windows (PowerShell)**
+```powershell
+irm https://arithmego.com/install.ps1 | iex
 ```
 
 ## About
