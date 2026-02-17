@@ -7,7 +7,7 @@ title = 'ArithmeGo'
   github = 'https://github.com/gurselcakar/arithmego'
   twitter = 'https://x.com/gurselcakar'
   twitterHandle = '@gurselcakar'
-  latestVersion = '0.6.0'
+  latestVersion = '0.7.0'
 
 [menu]
   [[menu.main]]
