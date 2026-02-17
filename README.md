@@ -1,15 +1,6 @@
 <div align="center">
 
-<pre>
- █████╗ ██████╗ ██╗████████╗██╗  ██╗███╗   ███╗███████╗ ██████╗  ██████╗
-██╔══██╗██╔══██╗██║╚══██╔══╝██║  ██║████╗ ████║██╔════╝██╔════╝ ██╔═══██╗
-███████║██████╔╝██║   ██║   ███████║██╔████╔██║█████╗  ██║  ███╗██║   ██║
-██╔══██║██╔══██╗██║   ██║   ██╔══██║██║╚██╔╝██║██╔══╝  ██║   ██║██║   ██║
-██║  ██║██║  ██║██║   ██║   ██║  ██║██║ ╚═╝ ██║███████╗╚██████╔╝╚██████╔╝
-╚═╝  ╚═╝╚═╝  ╚═╝╚═╝   ╚═╝   ╚═╝  ╚═╝╚═╝     ╚═╝╚══════╝ ╚═════╝  ╚═════╝
-</pre>
-
-**Your AI is thinking. You should too.**
+<img src="assets/logo-tagline.png" alt="ArithmeGo" width="600">
 
 [![Build](https://img.shields.io/github/actions/workflow/status/gurselcakar/arithmego/ci.yml?branch=main)](https://github.com/gurselcakar/arithmego/actions)
 [![Release](https://img.shields.io/github/v/release/gurselcakar/arithmego)](https://github.com/gurselcakar/arithmego/releases)
