@@ -1,6 +1,8 @@
 <nav class="navbar">
   <div class="navbar-inner">
-    <a href="/" class="navbar-brand">ArithmeGo</a>
+    <a href="/" class="navbar-brand">
+      <img src="/favicon.svg" alt="ArithmeGo" class="navbar-logo" width="28" height="28">
+    </a>
     <div class="navbar-links">
       {{ range .Site.Menus.main }}
         <a href="{{ .URL }}"{{ with .Params.external }} target="_blank" rel="noopener noreferrer"{{ end }}>{{ .Name }}</a>

@@ -62,15 +62,13 @@ code {
 }
 
 .navbar-brand {
-  font-family: "SF Mono", "Fira Code", "Fira Mono", "Roboto Mono", monospace;
-  font-size: 1rem;
-  font-weight: 600;
-  color: #ffffff;
-  letter-spacing: -0.01em;
+  display: flex;
+  align-items: center;
 }
 
-.navbar-brand:hover {
-  color: #ffffff;
+.navbar-logo {
+  display: block;
+  border-radius: 4px;
 }
 
 .navbar-links {
