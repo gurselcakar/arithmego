@@ -14,26 +14,27 @@
 curl -fsSL https://arithmego.com/install.sh | bash
 ```
 
-## What is this?
+## About
 
-A terminal-based arithmetic game for developers.
+ArithmeGo is an arithmetic game that runs in your terminal.
 
-- Multiple operations — add, subtract, multiply, and beyond
-- Progressive difficulty — start easy, work your way up
-- Diverse game modes — pick one operation or mix them all
-- Quick Play — one command, your last settings, go
-- Practice Mode — no timer, no pressure, just math
-- Local statistics — see where you're improving
-- Terminal-native — lives where you already work
-- Cross-platform — macOS and Linux (Windows coming soon)
+AI agents are getting better at handling longer tasks. While they work,
+you wait. ArithmeGo was built to fill that gap with something useful:
+mental math practice, right where you already are.
+
+It covers basic arithmetic, powers and roots, and advanced operations
+like modulo and factorials. Five difficulty levels from beginner to
+expert. Timed sprints with scoring and streaks, or untimed practice
+at your own pace. All progress is tracked locally.
 
 ## Usage
 
 ```
 arithmego            # Open main menu
-arithmego play       # Quick play with last settings
+arithmego play       # Browse and pick a game mode
+arithmego practice   # Start practice mode
 arithmego statistics # View your stats
-arithmego update     # Check for updates
+arithmego settings   # Adjust your preferences
 ```
 
 ## Development
