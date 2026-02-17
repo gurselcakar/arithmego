@@ -4,6 +4,8 @@
 
 [![Build](https://img.shields.io/github/actions/workflow/status/gurselcakar/arithmego/ci.yml?branch=main)](https://github.com/gurselcakar/arithmego/actions)
 [![Release](https://img.shields.io/github/v/release/gurselcakar/arithmego)](https://github.com/gurselcakar/arithmego/releases)
+[![Downloads](https://img.shields.io/github/downloads/gurselcakar/arithmego/total)](https://github.com/gurselcakar/arithmego/releases)
+[![Views](https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2Fgurselcakar%2Farithmego&count_bg=%2379C83D&title_bg=%23555555&title=views&edge_flat=false)](https://hits.seeyoufarm.com)
 [![License](https://img.shields.io/github/license/gurselcakar/arithmego)](LICENSE)
 
 </div>
